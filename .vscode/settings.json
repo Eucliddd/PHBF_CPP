@@ -50,7 +50,10 @@
         "typeinfo": "cpp",
         "unordered_map": "cpp",
         "variant": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "dense": "cpp",
+        "cholesky": "cpp",
+        "core": "cpp"
     },
-    "cmake.sourceDirectory": "/Users/euclid/PHBF_CPP/habf"
+    "cmake.sourceDirectory": "/Users/euclid/PHBF_CPP"
 }

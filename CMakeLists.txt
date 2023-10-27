@@ -1,13 +1,15 @@
-CMAKE_MINIMUM_REQUIRED_VERSION(VERSION 3.0)
+cmake_minimum_required(VERSION 3.17)
 
-PROJECT(PHBF_CPP)
+project(PHBF_CPP)
 
-SET(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 
-INCLUDE_DIRECTORIES("/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3/")
+include_directories("/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3/")
 
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+include_directories(${PROJECT_SOURCE_DIR}/utils)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/src DIR_SRCS)
 
-ADD_EXECUTABLE(PHBF_CPP ${DIR_SRCS})
+add_executable(PHBF_CPP ${DIR_SRCS})
