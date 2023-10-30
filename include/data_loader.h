@@ -28,21 +28,41 @@ typedef struct Data {
 */
 Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     // Load MNIST data
-    std::string mnistPath = "../data/mnist/";
-    std::string trainImagesPath = mnistPath + "train-images-idx3-ubyte";
-    std::string trainLabelsPath = mnistPath + "train-labels-idx1-ubyte";
-    std::string testImagesPath = mnistPath + "t10k-images-idx3-ubyte";
-    std::string testLabelsPath = mnistPath + "t10k-labels-idx1-ubyte";
+    std::string mnistPath = "/Users/euclid/PHBF_CPP/data/mnist/";
+    std::string trainImagesPath = mnistPath + "train-images.idx3-ubyte";
+    std::string trainLabelsPath = mnistPath + "train-labels.idx1-ubyte";
+    std::string testImagesPath = mnistPath + "t10k-images.idx3-ubyte";
+    std::string testLabelsPath = mnistPath + "t10k-labels.idx1-ubyte";
 
     std::ifstream trainImagesFile(trainImagesPath, std::ios::binary);
     std::ifstream trainLabelsFile(trainLabelsPath, std::ios::binary);
     std::ifstream testImagesFile(testImagesPath, std::ios::binary);
     std::ifstream testLabelsFile(testLabelsPath, std::ios::binary);
 
+    if (!trainImagesFile.is_open()) {
+        std::cout << "ERROR: Cannot open train-images-idx3-ubyte" << std::endl;
+        exit(1);
+    }
+
+    if (!trainLabelsFile.is_open()) {
+        std::cout << "ERROR: Cannot open train-labels-idx1-ubyte" << std::endl;
+        exit(1);
+    }
+
+    if (!testImagesFile.is_open()) {
+        std::cout << "ERROR: Cannot open t10k-images-idx3-ubyte" << std::endl;
+        exit(1);
+    }
+
+    if (!testLabelsFile.is_open()) {
+        std::cout << "ERROR: Cannot open t10k-labels-idx1-ubyte" << std::endl;
+        exit(1);
+    }
+
     Data* _Result = new Data();
 
     // Read training images
-    int magicNumber1, magicNumber2, numImages1, numImages2, numRows, numCols;
+    int magicNumber1 = 0, magicNumber2 = 0, numImages1 = 0, numImages2 = 0, numRows = 0, numCols = 0;
     trainImagesFile.read((char*)&magicNumber1, sizeof(magicNumber1));
     trainImagesFile.read((char*)&numImages1, sizeof(numImages1));
     trainImagesFile.read((char*)&numRows, sizeof(numRows));
