@@ -53,7 +53,18 @@
         "vector": "cpp",
         "dense": "cpp",
         "cholesky": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "__tree": "cpp",
+        "complex": "cpp",
+        "deque": "cpp",
+        "fstream": "cpp",
+        "iomanip": "cpp",
+        "list": "cpp",
+        "map": "cpp",
+        "queue": "cpp",
+        "set": "cpp",
+        "thread": "cpp",
+        "algorithm": "cpp"
     },
     "cmake.sourceDirectory": "/Users/euclid/PHBF_CPP"
 }

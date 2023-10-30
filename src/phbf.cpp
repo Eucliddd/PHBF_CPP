@@ -1,18 +1,36 @@
+/**
+ * @file phbf.cpp
+ * @brief Implementation of the PHBF class
+ * @note The implementation is based on the paper "New wine in bottle".
+ * However, the implementation is not exactly the same as the paper. 
+ * The original paper using MinMaxScaler to normalize each row after projection.
+ * We use normalize() to normalize each row of X and vectors before projection.
+*/
+
 #include <algorithm>
 #include "phbf.h"
 
 PHBF::PHBF(int size, int hash_count, int dim, int sample_factor, const std::string& method)
-    : hash_count(hash_count), size(size / hash_count), method(method), sample_factor(sample_factor), dim(dim) {
+    : hash_count(hash_count), delta(size / hash_count), method(method), sample_factor(sample_factor), dim(dim) {
     bit_array.resize(hash_count);
     for (int i = 0; i < hash_count; ++i) {
-        bit_array[i].resize(size,0);
+        bit_array[i].resize(delta,0);
     }
 }
-
+// select best "hash_count" vectors from "sample_size*hash_count" vectors
+/*
+    * 1. generate "sample_size*hash_count" vectors
+    * 2. normalize them
+    * 3. compute the projection of X and Y on the vectors
+    * 4. compute the hash values of X and Y
+    * 5. compute the overlap of the hash values of X and Y
+    * 6. select the best "hash_count" vectors
+*/
 Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
     int sample_size = hash_count * sample_factor;
     Eigen::MatrixXd candidates(sample_size, dim);
 
+    // Generate random vectors
     if (method == "gaussian") {
         candidates = Eigen::MatrixXd::Random(sample_size, dim);
     }
@@ -24,6 +42,7 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
         candidates = Eigen::MatrixXd::Random(sample_size, dim);
     }
 
+    // Normalize the vectors
     Eigen::MatrixXd candidates_normalized = candidates.rowwise().normalized();
     Eigen::MatrixXd X_normalized = X.rowwise().normalized();
     Eigen::MatrixXd Y_normalized = Y.rowwise().normalized();
@@ -31,10 +50,10 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     Eigen::MatrixXd pos_projections_normalized = X_normalized * candidates_normalized.transpose();
     Eigen::MatrixXd neg_projections_normalized = Y_normalized * candidates_normalized.transpose();
 
-    Eigen::MatrixXi pos_hash_values = (pos_projections_normalized.array().abs() * (size - 1)).cast<int>();
-    Eigen::MatrixXi neg_hash_values = (neg_projections_normalized.array().abs() * (size - 1)).cast<int>();
+    Eigen::MatrixXi pos_hash_values = (pos_projections_normalized.array().abs() * (delta - 1)).cast<int>();
+    Eigen::MatrixXi neg_hash_values = (neg_projections_normalized.array().abs() * (delta - 1)).cast<int>();
 
-
+    // Compute the overlap of the hash values of X and Y
     Eigen::VectorXi overlaps(sample_size);
     for (int i = 0; i < sample_size; ++i) {
         overlaps[i] = (pos_hash_values.row(i).array() == neg_hash_values.row(i).array()).count();
@@ -45,6 +64,7 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
         best_hashes_idx[i] = i;
     }
 
+    // Sort the hash functions by the overlap
     std::sort(best_hashes_idx.data(), best_hashes_idx.data() + best_hashes_idx.size(),
               [&overlaps](int i, int j) { return overlaps[i] > overlaps[j]; });
 
@@ -69,9 +89,10 @@ void PHBF::initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
     this->vectors = vectors.transpose();
 }
 
+// Compute the hash values of X
 Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
     Eigen::MatrixXd projections = X.rowwise().normalized() * vectors;
-    Eigen::MatrixXi hash_values = (projections.array().abs() * (size - 1)).cast<int>();
+    Eigen::MatrixXi hash_values = (projections.array().abs() * (delta - 1)).cast<int>();
 
     // Eigen::MatrixXi hash_values(indexes.rows(), indexes.cols());
     // for (int i = 0; i < projections.rows(); ++i) {

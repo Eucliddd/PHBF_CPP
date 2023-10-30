@@ -17,7 +17,7 @@ public:
 
     private:
         int hash_count;
-        int size;
+        int delta;
         std::vector<sul::dynamic_bitset<>> bit_array; // specify the number of bits in the bitset
         std::string method;
         int sample_factor;
