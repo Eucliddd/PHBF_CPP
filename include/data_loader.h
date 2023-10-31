@@ -1,3 +1,6 @@
+#ifndef DATA_LOADER_H
+#define DATA_LOADER_H
+
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -6,29 +9,26 @@
 #include <random>
 #include <algorithm>
 #include <Eigen/Dense>
-
+#include "tools.h"
 
 typedef struct Data {
-    Eigen::MatrixXd X;
-    Eigen::MatrixXd Y;
+    Eigen::MatrixXd X_train;
     Eigen::MatrixXd X_test;
-    Eigen::MatrixXd Y_test;
 } Data;
+
 
 /**
  * @brief Load MNIST data and perform operations as needed
  * @param posDigits: vector of digits to be considered as positive
  * @param numPos: number of positive examples to be considered
  * @param numNeg: number of negative examples to be considered
- * @return X: training data
- * @return Y: training labels
+ * @return X_train: training data
  * @return X_test: test data
- * @return Y_test: test labels
- * @note X, Y, X_test, Y_test are all Eigen::MatrixXd
+ * @note X, X_test are all Eigen::MatrixXd
 */
 Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     // Load MNIST data
-    std::string mnistPath = "/Users/euclid/PHBF_CPP/data/mnist/";
+    const std::string mnistPath = "/Users/euclid/PHBF_CPP/data/mnist/";
     std::string trainImagesPath = mnistPath + "train-images.idx3-ubyte";
     std::string trainLabelsPath = mnistPath + "train-labels.idx1-ubyte";
     std::string testImagesPath = mnistPath + "t10k-images.idx3-ubyte";
@@ -40,22 +40,22 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     std::ifstream testLabelsFile(testLabelsPath, std::ios::binary);
 
     if (!trainImagesFile.is_open()) {
-        std::cout << "ERROR: Cannot open train-images-idx3-ubyte" << std::endl;
+        std::cerr << "ERROR: Cannot open train-images-idx3-ubyte" << std::endl;
         exit(1);
     }
 
     if (!trainLabelsFile.is_open()) {
-        std::cout << "ERROR: Cannot open train-labels-idx1-ubyte" << std::endl;
+        std::cerr << "ERROR: Cannot open train-labels-idx1-ubyte" << std::endl;
         exit(1);
     }
 
     if (!testImagesFile.is_open()) {
-        std::cout << "ERROR: Cannot open t10k-images-idx3-ubyte" << std::endl;
+        std::cerr << "ERROR: Cannot open t10k-images-idx3-ubyte" << std::endl;
         exit(1);
     }
 
     if (!testLabelsFile.is_open()) {
-        std::cout << "ERROR: Cannot open t10k-labels-idx1-ubyte" << std::endl;
+        std::cerr << "ERROR: Cannot open t10k-labels-idx1-ubyte" << std::endl;
         exit(1);
     }
 
@@ -79,9 +79,9 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
 
     // Read training data
     Eigen::MatrixXd X(numImages1, numRows * numCols);
-    Eigen::MatrixXd Y(numImages2, 10);
-    _Result->X = Eigen::MatrixXd(numPos, numRows * numCols);
-    _Result->Y = Eigen::MatrixXd(numPos, 10);
+    //Eigen::MatrixXd Y(numImages2, 10);
+    _Result->X_train = Eigen::MatrixXd(numPos, numRows * numCols);
+    //_Result->Y = Eigen::MatrixXd(numPos, 10);
     long posCount = 0, negCount = 0;
     std::vector<int> sampleIdx;
     for (int i = 0; i < numImages1; ++i) {
@@ -96,12 +96,12 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
         trainLabelsFile.read(&label, 1);
         int labelInt = (unsigned char)label;
         if (std::find(posDigits.begin(), posDigits.end(), labelInt) != posDigits.end()) {
-            Y(i, labelInt) = 1;
+            //Y(i, labelInt) = 1;
             ++posCount;
             sampleIdx.push_back(i);
         }
         else {
-            Y(i, labelInt) = 0;
+            //Y(i, labelInt) = 0;
             ++negCount;
         }
     }
@@ -111,9 +111,10 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     std::mt19937 g(rd());
     std::shuffle(sampleIdx.begin(), sampleIdx.end(), g);
     for (int i = 0; i < numPos; ++i) {
-        _Result->X.row(i) = X.row(sampleIdx[i]);
-        _Result->Y.row(i) = Y.row(sampleIdx[i]);
+        _Result->X_train.row(i) = X.row(sampleIdx[i]);
+        //_Result->Y.row(i) = Y.row(sampleIdx[i]);
     }
+
 
     // Read test images
     testImagesFile.read((char*)&magicNumber1, sizeof(magicNumber1));
@@ -132,9 +133,9 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
 
     // Read test data
     Eigen::MatrixXd X_test(numImages1, numRows * numCols);
-    Eigen::MatrixXd Y_test(numImages2, 10);
+    //Eigen::MatrixXd Y_test(numImages2, 10);
     _Result->X_test = Eigen::MatrixXd(numNeg, numRows * numCols);
-    _Result->Y_test = Eigen::MatrixXd(numNeg, 10);
+    //_Result->Y_test = Eigen::MatrixXd(numNeg, 10);
     posCount = 0, negCount = 0;
     sampleIdx.clear();
     for (int i = 0; i < numImages1; ++i) {
@@ -149,11 +150,11 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
         testLabelsFile.read(&label, 1);
         int labelInt = (unsigned char)label;
         if (std::find(posDigits.begin(), posDigits.end(), labelInt) != posDigits.end()) {
-            Y_test(i, labelInt) = 1;
+            //Y_test(i, labelInt) = 1;
             ++posCount;
         }
         else {
-            Y_test(i, labelInt) = 0;
+            //Y_test(i, labelInt) = 0;
             ++negCount;
             sampleIdx.push_back(i);
         }
@@ -163,9 +164,12 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     std::shuffle(sampleIdx.begin(), sampleIdx.end(),g);
     for (int i = 0; i < numNeg; ++i) {
         _Result->X_test.row(i) = X_test.row(sampleIdx[i]);
-        _Result->Y_test.row(i) = Y_test.row(sampleIdx[i]);
+        //_Result->Y_test.row(i) = Y_test.row(sampleIdx[i]);
     }
 
+    // MinMaxScale each feature
+    _Result->X_train = scaleData(_Result->X_train);
+    _Result->X_test = scaleData(_Result->X_test);
 
     // Close files
     trainImagesFile.close();
@@ -173,6 +177,214 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     testImagesFile.close();
     testLabelsFile.close();
 
-    // return X, Y, X_test, Y_test;
+    // return X, X_test;
     return _Result;
 }
+
+/**
+ * @brief Load KITSUNE data and perform operations as needed
+ * @param attack: name of the attack to be considered
+ * @return X_train: training data
+ * @return X_test: test data
+ * @note X, X_test are all Eigen::MatrixXd
+*/
+Data* loadKitsune(const std::string& attack="Mirai"){
+    std::ifstream xFile("../data/kitsune/" + attack + "_dataset.csv");
+    std::ifstream yFile("../data/kitsune/" + attack + "_labels.csv");
+    if (!xFile || !yFile) {
+        std::cerr << "Failed to open data files." << std::endl;
+        exit(1);
+    }
+
+    Data* _Result = new Data();
+
+    // Read data
+    std::vector<std::vector<double>> xData;
+    std::vector<int> yData;
+    std::string line;
+    long posCount = 0, negCount = 0;
+    while(std::getline(xFile, line)) {
+        std::vector<double> row;
+        std::stringstream ss(line);
+        std::string cell;
+        while(std::getline(ss, cell, ',')) {
+            row.push_back(std::stod(cell));
+        }
+        xData.push_back(row);
+    }
+    while(std::getline(yFile, line)) {
+        int label = std::stoi(line);
+        yData.push_back(label);
+        if (label == 1) {
+            ++posCount;
+        }
+        else {
+            ++negCount;
+        }
+    }
+
+    // Convert to Eigen::MatrixXd
+    Eigen::MatrixXd X_train(posCount, xData[0].size());
+    Eigen::MatrixXd X_test(negCount, xData[0].size());
+    for(int i = 0; i < xData.size(); i++){
+        Eigen::VectorXd row = Eigen::VectorXd::Map(xData[i].data(), xData[i].size());
+        if (yData[i] == 1) {
+            X_train.row(i) = row;
+        }
+        else {
+            X_test.row(i) = row;
+        }
+    }
+    
+    // MinMaxScale each feature
+    X_train = scaleData(X_train); 
+    X_test = scaleData(X_test);
+
+    // return X_train, X_test;
+    _Result->X_train = X_train;
+    _Result->X_test = X_test;
+    return _Result;
+}
+
+Data* loadEmber(){
+
+}
+
+Data* loadHiggs(){
+    const std::string higgsPath = "../data/higgs/HIGSS.csv";
+    std::ifstream higgsFile(higgsPath);
+    if (!higgsFile.is_open()) {
+        std::cerr << "ERROR: Cannot open HIGGS.csv" << std::endl;
+        exit(1);
+    }
+
+    Data* _Result = new Data();
+
+    // Read data
+    std::vector<std::vector<double>> xData;
+    std::vector<int> yData;
+    std::string line;
+    long posCount = 0, negCount = 0;
+    std::getline(higgsFile, line); // skip the first line
+    while(std::getline(higgsFile, line)) {
+        std::vector<double> row;
+        std::stringstream ss(line);
+        std::string cell;
+        for(int i = 0; i < 28; i++){
+            std::getline(ss, cell, ',');
+            row.push_back(std::stod(cell));
+        }
+        xData.push_back(row);
+        std::getline(ss, cell, ',');
+        if(cell == "1"){
+            yData.push_back(1);
+            ++posCount;
+        }
+        else{
+            yData.push_back(0);
+            ++negCount;
+        }
+    }
+
+    // Convert to Eigen::MatrixXd
+    Eigen::MatrixXd X_train(posCount, xData[0].size());
+    Eigen::MatrixXd X_test(negCount, xData[0].size());
+    for(int i = 0; i < xData.size(); i++){
+        Eigen::VectorXd row = Eigen::VectorXd::Map(xData[i].data(), xData[i].size());
+        if (yData[i] == 1) {
+            X_train.row(i) = row;
+        }
+        else {
+            X_test.row(i) = row;
+        }
+    }
+
+    // MinMaxScale each feature
+    X_train = scaleData(X_train);
+    X_test = scaleData(X_test);
+
+    // return X_train, X_test;
+    _Result->X_train = X_train;
+    _Result->X_test = X_test;
+    return _Result;
+}
+
+Data* loadFacebook(){
+
+}
+
+/**
+ * @brief Load malicious URLs data and perform operations as needed
+ * @param numPos: number of positive examples to be considered
+ * @param numNeg: number of negative examples to be considered
+ * @return X_train: training data
+ * @return X_test: test data
+ * @note X_train, X_test are all Eigen::MatrixXd
+*/
+Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
+    const std::string maliciousUrlsPath = "../data/malicious_urls/All.csv";
+    std::ifstream maliciousUrlsFile(maliciousUrlsPath);
+    if (!maliciousUrlsFile.is_open()) {
+        std::cerr << "ERROR: Cannot open All.csv" << std::endl;
+        exit(1);
+    }
+    
+    Data* _Result = new Data();
+
+    // Read data
+    std::vector<std::vector<double>> xData;
+    std::vector<int> yData;
+    std::string line;
+    std::vector<int> posIdx, negIdx;
+    std::getline(maliciousUrlsFile, line); // skip the first line
+    while(std::getline(maliciousUrlsFile, line)) {
+        std::vector<double> row;
+        std::stringstream ss(line);
+        std::string cell;
+        for(int i = 0; i < 79; i++){
+            std::getline(ss, cell, ',');
+            if(cell != "NaN")
+                row.push_back(std::stod(cell));
+            else
+                break;
+        }
+        if (row.size() != 79) {
+            continue;
+        }
+        xData.push_back(row);
+        std::getline(ss, cell, ',');
+        if(cell == "benign"){
+            yData.push_back(0);
+            negIdx.push_back(yData.size() - 1);
+        }
+        else{
+            yData.push_back(1);
+            posIdx.push_back(yData.size() - 1);
+        }
+    }
+
+    // Randomly select numPos examples
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(posIdx.begin(), posIdx.end(), g);
+    std::shuffle(negIdx.begin(), negIdx.end(), g);
+    Eigen::MatrixXd X_train(numPos, xData[0].size());
+    Eigen::MatrixXd X_test(numNeg, xData[0].size());
+    for (int i = 0; i < numPos; ++i) {
+        X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
+    }
+    for (int i = 0; i < numNeg; ++i) {
+        X_test.row(i) = Eigen::VectorXd::Map(xData[negIdx[i]].data(), xData[negIdx[i]].size());
+    }
+
+    // MinMaxScale each feature
+    X_train = scaleData(X_train);
+    X_test = scaleData(X_test);
+    
+    // return X_train, X_test;
+    _Result->X_train = X_train;
+    _Result->X_test = X_test;
+    return _Result;
+}
+
+#endif

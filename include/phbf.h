@@ -1,5 +1,5 @@
-#ifndef HPBF_H
-#define HPBF_H
+#ifndef PHBF_H
+#define PHBF_H
 
 #include <vector>
 #include <Eigen/Dense>
@@ -12,7 +12,7 @@ public:
     void initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y);
     Eigen::MatrixXi compute_hashes(const Eigen::MatrixXd& X);
         void bulk_add(const Eigen::MatrixXd& X);
-        std::vector<bool> lookup(const Eigen::MatrixXd& X);
+        bool* lookup(const Eigen::MatrixXd& X);
         double compute_fpr(const Eigen::MatrixXd& X);
 
     private:

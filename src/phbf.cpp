@@ -6,9 +6,12 @@
  * The original paper using MinMaxScaler to normalize each row after projection.
  * We use normalize() to normalize each row of X and vectors before projection.
 */
-
 #include <algorithm>
 #include "phbf.h"
+#include "tools.h"
+#include <fstream>
+#include <iostream>
+
 
 PHBF::PHBF(int size, int hash_count, int dim, int sample_factor, const std::string& method)
     : hash_count(hash_count), delta(size / hash_count), method(method), sample_factor(sample_factor), dim(dim) {
@@ -33,6 +36,15 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // Generate random vectors
     if (method == "gaussian") {
         candidates = Eigen::MatrixXd::Random(sample_size, dim);
+        // std::ofstream outFile("gaussian.csv");
+        // outFile << "candidates:" << std::endl;
+        // for (int i = 0; i < sample_size; ++i) {
+        //     for (int j = 0; j < dim; ++j) {
+        //         outFile << candidates(i, j) << ",";
+        //     }
+        //     outFile << std::endl;
+        // }
+        // outFile.close();
     }
     else if (method == "optimistic") {
         candidates = Eigen::MatrixXd::Zero(sample_size, dim);
@@ -43,20 +55,43 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     }
 
     // Normalize the vectors
-    Eigen::MatrixXd candidates_normalized = candidates.rowwise().normalized();
-    Eigen::MatrixXd X_normalized = X.rowwise().normalized();
-    Eigen::MatrixXd Y_normalized = Y.rowwise().normalized();
+    //Eigen::MatrixXd candidates_normalized = candidates.rowwise().normalized();
+    //Eigen::MatrixXd X_normalized = X.rowwise().normalized();
+    //Eigen::MatrixXd Y_normalized = Y.rowwise().normalized();
 
-    Eigen::MatrixXd pos_projections_normalized = X_normalized * candidates_normalized.transpose();
-    Eigen::MatrixXd neg_projections_normalized = Y_normalized * candidates_normalized.transpose();
+    Eigen::MatrixXd pos_projections = X * candidates.transpose();
+    Eigen::MatrixXd neg_projections = Y * candidates.transpose();
+
+    // MinMaxScaler to normalize each column after projection
+    Eigen::MatrixXd pos_projections_normalized = scaleData(pos_projections);
+    Eigen::MatrixXd neg_projections_normalized = scaleData(neg_projections);
 
     Eigen::MatrixXi pos_hash_values = (pos_projections_normalized.array().abs() * (delta - 1)).cast<int>();
     Eigen::MatrixXi neg_hash_values = (neg_projections_normalized.array().abs() * (delta - 1)).cast<int>();
 
+    std::ofstream outFile("hash_values.csv");
+    outFile << "pos_hash_values:" << std::endl;
+    for (int i = 0; i < pos_hash_values.rows(); ++i) {
+        for (int j = 0; j < pos_hash_values.cols(); ++j) {
+            outFile << pos_hash_values(i, j) << ",";
+        }
+        outFile << std::endl;
+        //std::cout<< pos_hash_values.row(i).norm() << std::endl;
+    }
+    outFile << "neg_hash_values:" << std::endl;
+    for (int i = 0; i < neg_hash_values.rows(); ++i) {
+        for (int j = 0; j < neg_hash_values.cols(); ++j) {
+            outFile << neg_hash_values(i, j) << ",";
+        }
+        outFile << std::endl;
+        //std::cout<< neg_hash_values.row(i).norm() << std::endl;
+    }
+    outFile.close();
+
     // Compute the overlap of the hash values of X and Y
     Eigen::VectorXi overlaps(sample_size);
     for (int i = 0; i < sample_size; ++i) {
-        overlaps[i] = (pos_hash_values.row(i).array() == neg_hash_values.row(i).array()).count();
+        overlaps[i] = (pos_hash_values.col(i).array() == neg_hash_values.col(i).array()).count();
     }
 
     Eigen::VectorXi best_hashes_idx(sample_size);
@@ -66,13 +101,29 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
 
     // Sort the hash functions by the overlap
     std::sort(best_hashes_idx.data(), best_hashes_idx.data() + best_hashes_idx.size(),
-              [&overlaps](int i, int j) { return overlaps[i] > overlaps[j]; });
+              [&overlaps](int i, int j) { return overlaps[i] < overlaps[j]; });
 
     // Select the best hash functions
     Eigen::MatrixXd best_hashes(hash_count, dim);
     for (int i = 0; i < hash_count; ++i) {
-        best_hashes.row(i) = candidates_normalized.row(best_hashes_idx[i]);
+        best_hashes.row(i) = candidates.row(best_hashes_idx[i]);
     }
+
+    std::ofstream outFile1("overlaps&besthashes.csv");
+    outFile1 << "overlaps:" << std::endl;
+    for (int i = 0; i < overlaps.size(); ++i) {
+        outFile1 << overlaps[i] << ",";
+    }
+    outFile1 << std::endl;
+    outFile1 << "best_hashes:" << std::endl;
+    for (int i = 0; i < best_hashes.rows(); ++i) {
+        for (int j = 0; j < best_hashes.cols(); ++j) {
+            outFile1 << best_hashes(i, j) << ",";
+        }
+        outFile1 << std::endl;
+    }
+    outFile1.close();
+
     return best_hashes;
 }
 
@@ -91,8 +142,12 @@ void PHBF::initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
 
 // Compute the hash values of X
 Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
-    Eigen::MatrixXd projections = X.rowwise().normalized() * vectors;
-    Eigen::MatrixXi hash_values = (projections.array().abs() * (delta - 1)).cast<int>();
+    Eigen::MatrixXd projections = X * vectors;
+
+    // MinMaxScaler to normalize each column after projection
+    Eigen::MatrixXd projections_normalized = scaleData(projections);
+
+    Eigen::MatrixXi hash_values = (projections_normalized.array().abs() * (delta - 1)).cast<int>();
 
     // Eigen::MatrixXi hash_values(indexes.rows(), indexes.cols());
     // for (int i = 0; i < projections.rows(); ++i) {
@@ -120,8 +175,9 @@ void PHBF::bulk_add(const Eigen::MatrixXd& X) {
     }
 }
 
-std::vector<bool> PHBF::lookup(const Eigen::MatrixXd& X) {
-    std::vector<bool> results(X.rows(), true);
+bool* PHBF::lookup(const Eigen::MatrixXd& X) {
+    bool* results = new bool[X.rows()];
+    std::fill(results, results + X.rows(), true);
     Eigen::MatrixXi hash_values = compute_hashes(X);
 
     for (int i = 0; i < hash_values.rows(); ++i) {
@@ -140,10 +196,10 @@ std::vector<bool> PHBF::lookup(const Eigen::MatrixXd& X) {
 double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
     int fp = 0;
     int tn = 0;
-    std::vector<bool> results = lookup(X);
+    bool* results = lookup(X);
 
-    for (bool result : results) {
-        if (result) {
+    for (int i = 0; i < X.rows(); ++i) {
+        if (results[i]) {
             fp++;
         }
         else {
