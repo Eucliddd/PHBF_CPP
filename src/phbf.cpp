@@ -11,6 +11,7 @@
 #include "tools.h"
 #include <fstream>
 #include <iostream>
+#include <set>
 
 
 PHBF::PHBF(int size, int hash_count, int dim, int sample_factor, const std::string& method)
@@ -91,7 +92,12 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // Compute the overlap of the hash values of X and Y
     Eigen::VectorXi overlaps(sample_size);
     for (int i = 0; i < sample_size; ++i) {
-        overlaps[i] = (pos_hash_values.col(i).array() == neg_hash_values.col(i).array()).count();
+        // overlap[i] is the size of the intersect between the set of pos_hash_values.col(i) and the set of neg_hash_values.col(i)
+        std::set<int> pos_set(pos_hash_values.col(i).data(), pos_hash_values.col(i).data() + pos_hash_values.col(i).size());
+        std::set<int> neg_set(neg_hash_values.col(i).data(), neg_hash_values.col(i).data() + neg_hash_values.col(i).size());
+        std::vector<int> intersect;
+        std::set_intersection(pos_set.begin(), pos_set.end(), neg_set.begin(), neg_set.end(), std::back_inserter(intersect));
+        overlaps[i] = intersect.size();
     }
 
     Eigen::VectorXi best_hashes_idx(sample_size);
@@ -109,18 +115,15 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
         best_hashes.row(i) = candidates.row(best_hashes_idx[i]);
     }
 
-    std::ofstream outFile1("overlaps&besthashes.csv");
+    std::ofstream outFile1("overlaps&best_overlaps.csv");
     outFile1 << "overlaps:" << std::endl;
     for (int i = 0; i < overlaps.size(); ++i) {
         outFile1 << overlaps[i] << ",";
     }
     outFile1 << std::endl;
-    outFile1 << "best_hashes:" << std::endl;
-    for (int i = 0; i < best_hashes.rows(); ++i) {
-        for (int j = 0; j < best_hashes.cols(); ++j) {
-            outFile1 << best_hashes(i, j) << ",";
-        }
-        outFile1 << std::endl;
+    outFile1 << "best_overlaps:" << std::endl;
+    for (int i = 0; i < hash_count; ++i) {
+        outFile1 << overlaps[best_hashes_idx[i]] << ",";
     }
     outFile1.close();
 
