@@ -82,7 +82,7 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     //Eigen::MatrixXd Y(numImages2, 10);
     _Result->X_train = Eigen::MatrixXd(numPos, numRows * numCols);
     //_Result->Y = Eigen::MatrixXd(numPos, 10);
-    long posCount = 0, negCount = 0;
+    //long posCount = 0, negCount = 0;
     std::vector<int> sampleIdx;
     for (int i = 0; i < numImages1; ++i) {
         char* pixels = new char[numRows * numCols];
@@ -97,12 +97,12 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
         int labelInt = (unsigned char)label;
         if (std::find(posDigits.begin(), posDigits.end(), labelInt) != posDigits.end()) {
             //Y(i, labelInt) = 1;
-            ++posCount;
+            //++posCount;
             sampleIdx.push_back(i);
         }
         else {
             //Y(i, labelInt) = 0;
-            ++negCount;
+            //++negCount;
         }
     }
 
@@ -136,7 +136,7 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     //Eigen::MatrixXd Y_test(numImages2, 10);
     _Result->X_test = Eigen::MatrixXd(numNeg, numRows * numCols);
     //_Result->Y_test = Eigen::MatrixXd(numNeg, 10);
-    posCount = 0, negCount = 0;
+    //posCount = 0, negCount = 0;
     sampleIdx.clear();
     for (int i = 0; i < numImages1; ++i) {
         char* pixels = new char[numRows * numCols];
@@ -151,11 +151,11 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
         int labelInt = (unsigned char)label;
         if (std::find(posDigits.begin(), posDigits.end(), labelInt) != posDigits.end()) {
             //Y_test(i, labelInt) = 1;
-            ++posCount;
+            //++posCount;
         }
         else {
             //Y_test(i, labelInt) = 0;
-            ++negCount;
+            //++negCount;
             sampleIdx.push_back(i);
         }
     }
@@ -168,8 +168,8 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     }
 
     // MinMaxScale each feature
-    _Result->X_train = scaleData(_Result->X_train);
-    _Result->X_test = scaleData(_Result->X_test);
+    _Result->X_train = SCALEDATA(_Result->X_train);
+    _Result->X_test = SCALEDATA(_Result->X_test);
 
     // Close files
     trainImagesFile.close();
@@ -224,25 +224,22 @@ Data* loadKitsune(const std::string& attack="Mirai"){
     }
 
     // Convert to Eigen::MatrixXd
-    Eigen::MatrixXd X_train(posCount, xData[0].size());
-    Eigen::MatrixXd X_test(negCount, xData[0].size());
-    for(int i = 0; i < xData.size(); i++){
+    _Result->X_train = Eigen::MatrixXd(posCount, xData[0].size());
+    _Result->X_test = Eigen::MatrixXd(negCount, xData[0].size());
+    for(size_t i = 0; i < xData.size(); i++){
         Eigen::VectorXd row = Eigen::VectorXd::Map(xData[i].data(), xData[i].size());
         if (yData[i] == 1) {
-            X_train.row(i) = row;
+            _Result->X_train.row(i) = row;
         }
         else {
-            X_test.row(i) = row;
+            _Result->X_test.row(i) = row;
         }
     }
     
     // MinMaxScale each feature
-    X_train = scaleData(X_train); 
-    X_test = scaleData(X_test);
+    _Result->X_train = SCALEDATA(_Result->X_train); 
+    _Result->X_test = SCALEDATA(_Result->X_test);
 
-    // return X_train, X_test;
-    _Result->X_train = X_train;
-    _Result->X_test = X_test;
     return _Result;
 }
 
@@ -287,25 +284,22 @@ Data* loadHiggs(){
     }
 
     // Convert to Eigen::MatrixXd
-    Eigen::MatrixXd X_train(posCount, xData[0].size());
-    Eigen::MatrixXd X_test(negCount, xData[0].size());
-    for(int i = 0; i < xData.size(); i++){
+    _Result->X_train = Eigen::MatrixXd(posCount, xData[0].size());
+    _Result->X_test = Eigen::MatrixXd(negCount, xData[0].size());
+    for(size_t i = 0; i < xData.size(); i++){
         Eigen::VectorXd row = Eigen::VectorXd::Map(xData[i].data(), xData[i].size());
         if (yData[i] == 1) {
-            X_train.row(i) = row;
+            _Result->X_train.row(i) = row;
         }
         else {
-            X_test.row(i) = row;
+            _Result->X_test.row(i) = row;
         }
     }
 
     // MinMaxScale each feature
-    X_train = scaleData(X_train);
-    X_test = scaleData(X_test);
+    _Result->X_train = SCALEDATA(_Result->X_train);
+    _Result->X_test = SCALEDATA(_Result->X_test);
 
-    // return X_train, X_test;
-    _Result->X_train = X_train;
-    _Result->X_test = X_test;
     return _Result;
 }
 
@@ -322,7 +316,7 @@ Data* loadFacebook(){
  * @note X_train, X_test are all Eigen::MatrixXd
 */
 Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
-    const std::string maliciousUrlsPath = "../data/malicious_urls/All.csv";
+    const std::string maliciousUrlsPath = "/Users/euclid/PHBF_CPP/data/malicious_urls/All.csv";
     std::ifstream maliciousUrlsFile(maliciousUrlsPath);
     if (!maliciousUrlsFile.is_open()) {
         std::cerr << "ERROR: Cannot open All.csv" << std::endl;
@@ -362,28 +356,45 @@ Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
             posIdx.push_back(yData.size() - 1);
         }
     }
+    // std::cout << "posIdx.size(): " << posIdx.size() << std::endl;
+    // std::cout << "negIdx.size(): " << negIdx.size() << std::endl;
+    // std::cout << "xData.size(): " << xData.size() << std::endl; 
 
     // Randomly select numPos examples
     std::random_device rd;
     std::mt19937 g(rd());
     std::shuffle(posIdx.begin(), posIdx.end(), g);
     std::shuffle(negIdx.begin(), negIdx.end(), g);
-    Eigen::MatrixXd X_train(numPos, xData[0].size());
-    Eigen::MatrixXd X_test(numNeg, xData[0].size());
+    _Result->X_train = Eigen::MatrixXd(numPos, xData[0].size());
+    _Result->X_test = Eigen::MatrixXd(numNeg, xData[0].size());
     for (int i = 0; i < numPos; ++i) {
-        X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
+        _Result->X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
     }
     for (int i = 0; i < numNeg; ++i) {
-        X_test.row(i) = Eigen::VectorXd::Map(xData[negIdx[i]].data(), xData[negIdx[i]].size());
+        _Result->X_test.row(i) = Eigen::VectorXd::Map(xData[negIdx[i]].data(), xData[negIdx[i]].size());
     }
 
     // MinMaxScale each feature
-    X_train = scaleData(X_train);
-    X_test = scaleData(X_test);
+    _Result->X_train = SCALEDATA(_Result->X_train);
+    _Result->X_test = SCALEDATA(_Result->X_test);
+
+    // std::ofstream outFile("malicious_urls.csv");
+    // outFile << "X_train:" << std::endl;
+    // for (int i = 0; i < _Result->X_train.rows(); ++i) {
+    //     for (int j = 0; j < _Result->X_train.cols(); ++j) {
+    //         outFile << _Result->X_train(i, j) << ",";
+    //     }
+    //     outFile << std::endl;
+    // }
+    // outFile << "X_test:" << std::endl;
+    // for (int i = 0; i < _Result->X_test.rows(); ++i) {
+    //     for (int j = 0; j < _Result->X_test.cols(); ++j) {
+    //         outFile << _Result->X_test(i, j) << ",";
+    //     }
+    //     outFile << std::endl;
+    // }
+    // outFile.close();
     
-    // return X_train, X_test;
-    _Result->X_train = X_train;
-    _Result->X_test = X_test;
     return _Result;
 }
 

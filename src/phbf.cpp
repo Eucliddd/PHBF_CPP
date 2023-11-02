@@ -60,34 +60,38 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     //Eigen::MatrixXd X_normalized = X.rowwise().normalized();
     //Eigen::MatrixXd Y_normalized = Y.rowwise().normalized();
 
-    Eigen::MatrixXd pos_projections = X * candidates.transpose();
-    Eigen::MatrixXd neg_projections = Y * candidates.transpose();
+    // Eigen::MatrixXd pos_projections = X * candidates.transpose();
+    // Eigen::MatrixXd neg_projections = Y * candidates.transpose();
 
-    // MinMaxScaler to normalize each column after projection
-    Eigen::MatrixXd pos_projections_normalized = scaleData(pos_projections);
-    Eigen::MatrixXd neg_projections_normalized = scaleData(neg_projections);
+    // // MinMaxScaler to normalize each column after projection
+    // Eigen::MatrixXd pos_projections_normalized = SCALEDATA(X * candidates.transpose());
+    // Eigen::MatrixXd neg_projections_normalized = SCALEDATA(Y * candidates.transpose());
 
-    Eigen::MatrixXi pos_hash_values = (pos_projections_normalized.array().abs() * (delta - 1)).cast<int>();
-    Eigen::MatrixXi neg_hash_values = (neg_projections_normalized.array().abs() * (delta - 1)).cast<int>();
 
-    std::ofstream outFile("hash_values.csv");
-    outFile << "pos_hash_values:" << std::endl;
-    for (int i = 0; i < pos_hash_values.rows(); ++i) {
-        for (int j = 0; j < pos_hash_values.cols(); ++j) {
-            outFile << pos_hash_values(i, j) << ",";
-        }
-        outFile << std::endl;
-        //std::cout<< pos_hash_values.row(i).norm() << std::endl;
-    }
-    outFile << "neg_hash_values:" << std::endl;
-    for (int i = 0; i < neg_hash_values.rows(); ++i) {
-        for (int j = 0; j < neg_hash_values.cols(); ++j) {
-            outFile << neg_hash_values(i, j) << ",";
-        }
-        outFile << std::endl;
-        //std::cout<< neg_hash_values.row(i).norm() << std::endl;
-    }
-    outFile.close();
+
+    // std::cout<<X.array().isNaN().any()<<std::endl;
+    // std::cout<<Y.array().isNaN().any()<<std::endl;
+    // std::cout<<candidates.array().isNaN().any()<<std::endl;
+
+    Eigen::MatrixXi pos_hash_values = (SCALEDATA(X * candidates.transpose()).array().abs() * (delta - 1)).cast<int>();
+    Eigen::MatrixXi neg_hash_values = (SCALEDATA(Y * candidates.transpose()).array().abs() * (delta - 1)).cast<int>();
+
+    // std::ofstream outFile("hash_values.csv");
+    // outFile << "pos_hash_values:" << std::endl;
+    // for (int i = 0; i < pos_hash_values.rows(); ++i) {
+    //     for (int j = 0; j < pos_hash_values.cols(); ++j) {
+    //         outFile << pos_hash_values(i, j) << ",";
+    //     }
+    //     outFile << std::endl;
+    // }
+    // outFile << "neg_hash_values:" << std::endl;
+    // for (int i = 0; i < neg_hash_values.rows(); ++i) {
+    //     for (int j = 0; j < neg_hash_values.cols(); ++j) {
+    //         outFile << neg_hash_values(i, j) << ",";
+    //     }
+    //     outFile << std::endl;
+    // }
+    // outFile.close();
 
     // Compute the overlap of the hash values of X and Y
     Eigen::VectorXi overlaps(sample_size);
@@ -116,14 +120,14 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     }
 
     std::ofstream outFile1("overlaps&best_overlaps.csv");
-    outFile1 << "overlaps:" << std::endl;
-    for (int i = 0; i < overlaps.size(); ++i) {
-        outFile1 << overlaps[i] << ",";
-    }
-    outFile1 << std::endl;
+    // outFile1 << "overlaps:" << std::endl;
+    // for (int i = 0; i < overlaps.size(); ++i) {
+    //     outFile1 << overlaps[i] << ",";
+    // }
+    // outFile1 << std::endl;
     outFile1 << "best_overlaps:" << std::endl;
     for (int i = 0; i < hash_count; ++i) {
-        outFile1 << overlaps[best_hashes_idx[i]] << ",";
+         outFile1 << overlaps[best_hashes_idx[i]] << ",";
     }
     outFile1.close();
 
@@ -145,12 +149,12 @@ void PHBF::initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
 
 // Compute the hash values of X
 Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
-    Eigen::MatrixXd projections = X * vectors;
+    // Eigen::MatrixXd projections = X * vectors;
 
-    // MinMaxScaler to normalize each column after projection
-    Eigen::MatrixXd projections_normalized = scaleData(projections);
+    // // MinMaxScaler to normalize each column after projection
+    // Eigen::MatrixXd projections_normalized = SCALEDATA(X * vectors);
 
-    Eigen::MatrixXi hash_values = (projections_normalized.array().abs() * (delta - 1)).cast<int>();
+    // Eigen::MatrixXi hash_values = (SCALEDATA(X * vectors).array().abs() * (delta - 1)).cast<int>();
 
     // Eigen::MatrixXi hash_values(indexes.rows(), indexes.cols());
     // for (int i = 0; i < projections.rows(); ++i) {
@@ -164,11 +168,21 @@ Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
     //     }
     // }
 
-    return hash_values;
+    return (SCALEDATA(X * vectors).array().abs() * (delta - 1)).cast<int>();
 }
 
 void PHBF::bulk_add(const Eigen::MatrixXd& X) {
     Eigen::MatrixXi indexes = compute_hashes(X);
+
+    std::ofstream outFile("pos_hash_values.csv");
+    outFile << "pos_hash_values:" << std::endl;
+    for (int i = 0; i < indexes.rows(); ++i) {
+        for (int j = 0; j < indexes.cols(); ++j) {
+            outFile << indexes(i, j) << ",";
+        }
+        outFile << std::endl;
+    }
+    outFile.close();
 
     for (int i = 0; i < indexes.cols(); ++i) {
         for (int j = 0; j < indexes.rows(); ++j) {
@@ -182,6 +196,16 @@ bool* PHBF::lookup(const Eigen::MatrixXd& X) {
     bool* results = new bool[X.rows()];
     std::fill(results, results + X.rows(), true);
     Eigen::MatrixXi hash_values = compute_hashes(X);
+
+    std::ofstream outFile("neg_hash_values.csv");
+    outFile << "neg_hash_values:" << std::endl;
+    for (int i = 0; i < hash_values.rows(); ++i) {
+        for (int j = 0; j < hash_values.cols(); ++j) {
+            outFile << hash_values(i, j) << ",";
+        }
+        outFile << std::endl;
+    }
+    outFile.close();
 
     for (int i = 0; i < hash_values.rows(); ++i) {
         for (int j = 0; j < hash_values.cols(); ++j) {
