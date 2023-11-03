@@ -13,7 +13,7 @@ public:
     Eigen::MatrixXi compute_hashes(const Eigen::MatrixXd& X);
         void bulk_add(const Eigen::MatrixXd& X);
         bool* lookup(const Eigen::MatrixXd& X);
-        double compute_fpr(const Eigen::MatrixXd& X);
+        long double compute_fpr(const Eigen::MatrixXd& X);
 
     private:
         int hash_count;

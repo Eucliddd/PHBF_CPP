@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <random>
 #include <algorithm>
+#include <arpa/inet.h>
 #include <Eigen/Dense>
 #include "tools.h"
 
@@ -28,7 +29,7 @@ typedef struct Data {
 */
 Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     // Load MNIST data
-    const std::string mnistPath = "/Users/euclid/PHBF_CPP/data/mnist/";
+    const std::string mnistPath = "/data/mnist/";
     std::string trainImagesPath = mnistPath + "train-images.idx3-ubyte";
     std::string trainLabelsPath = mnistPath + "train-labels.idx1-ubyte";
     std::string testImagesPath = mnistPath + "t10k-images.idx3-ubyte";
@@ -189,8 +190,8 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
  * @note X, X_test are all Eigen::MatrixXd
 */
 Data* loadKitsune(const std::string& attack="Mirai"){
-    std::ifstream xFile("../data/kitsune/" + attack + "_dataset.csv");
-    std::ifstream yFile("../data/kitsune/" + attack + "_labels.csv");
+    std::ifstream xFile("/data/kitsune/" + attack + "_dataset.csv");
+    std::ifstream yFile("/data/kitsune/" + attack + "_labels.csv");
     if (!xFile || !yFile) {
         std::cerr << "Failed to open data files." << std::endl;
         exit(1);
@@ -248,7 +249,7 @@ Data* loadEmber(){
 }
 
 Data* loadHiggs(){
-    const std::string higgsPath = "../data/higgs/HIGSS.csv";
+    const std::string higgsPath = "/data/higgs/HIGSS.csv";
     std::ifstream higgsFile(higgsPath);
     if (!higgsFile.is_open()) {
         std::cerr << "ERROR: Cannot open HIGGS.csv" << std::endl;
@@ -316,7 +317,7 @@ Data* loadFacebook(){
  * @note X_train, X_test are all Eigen::MatrixXd
 */
 Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
-    const std::string maliciousUrlsPath = "/Users/euclid/PHBF_CPP/data/malicious_urls/All.csv";
+    const std::string maliciousUrlsPath = "/data/malicious_urls/All.csv";
     std::ifstream maliciousUrlsFile(maliciousUrlsPath);
     if (!maliciousUrlsFile.is_open()) {
         std::cerr << "ERROR: Cannot open All.csv" << std::endl;

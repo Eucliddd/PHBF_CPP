@@ -1,3 +1,11 @@
+#ifndef EIGEN_USE_MKL_ALL
+#define EIGEN_USE_MKL_ALL
+#endif
+
+#ifndef EIGEN_VECTORIZE_SSE4_2
+#define EIGEN_VECTORIZE_SSE4_2
+#endif
+
 #include <iostream>
 #include "phbf.h"
 #include "data_loader.h"

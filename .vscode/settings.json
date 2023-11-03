@@ -66,5 +66,5 @@
         "thread": "cpp",
         "algorithm": "cpp"
     },
-    "cmake.sourceDirectory": "/Users/euclid/PHBF_CPP"
+    "cmake.sourceDirectory": "/root/phbf_cpp"
 }

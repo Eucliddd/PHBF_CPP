@@ -220,9 +220,9 @@ bool* PHBF::lookup(const Eigen::MatrixXd& X) {
     return results;
 }
 
-double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
-    int fp = 0;
-    int tn = 0;
+long double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
+    long double fp = 0;
+    long double tn = 0;
     bool* results = lookup(X);
 
     for (int i = 0; i < X.rows(); ++i) {
@@ -234,5 +234,5 @@ double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
         }
     }
 
-    return static_cast<double>(fp) / (fp + tn);
+    return static_cast<long double>(fp) / (fp + tn);
 }
