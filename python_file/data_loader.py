@@ -3,7 +3,7 @@ import pandas as pd
 import sklearn.datasets as skds
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split
-# import ember
+import ember
 
 # from imblearn.over_sampling import SMOTE
 
@@ -328,4 +328,3 @@ def load_malicious_urls(posNum=16000, negNum=2700):
     logger.info(f"Malicious URLs test size = {x_test.shape[0]}")
     logger.info(f"Malicious URLs dimensions = {x_train.shape[1]}")
     return x_train, y_train, x_test, y_test
-

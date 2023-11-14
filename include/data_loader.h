@@ -29,6 +29,7 @@ typedef struct Data {
 */
 Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     // Load MNIST data
+    std::cout << "Loading MNIST data..." << std::endl;
     const std::string mnistPath = "/data/mnist/";
     std::string trainImagesPath = mnistPath + "train-images.idx3-ubyte";
     std::string trainLabelsPath = mnistPath + "train-labels.idx1-ubyte";
@@ -178,6 +179,8 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     testImagesFile.close();
     testLabelsFile.close();
 
+    std::cout << "MNIST data loaded." << std::endl;
+
     // return X, X_test;
     return _Result;
 }
@@ -190,6 +193,9 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
  * @note X, X_test are all Eigen::MatrixXd
 */
 Data* loadKitsune(const std::string& attack="Mirai"){
+
+    std::cout << "Loading KITSUNE data..." << std::endl;
+
     std::ifstream xFile("/data/kitsune/" + attack + "_dataset.csv");
     std::ifstream yFile("/data/kitsune/" + attack + "_labels.csv");
     if (!xFile || !yFile) {
@@ -241,6 +247,8 @@ Data* loadKitsune(const std::string& attack="Mirai"){
     _Result->X_train = SCALEDATA(_Result->X_train); 
     _Result->X_test = SCALEDATA(_Result->X_test);
 
+    std::cout << "KITSUNE data loaded." << std::endl;
+
     return _Result;
 }
 
@@ -248,8 +256,20 @@ Data* loadEmber(){
 
 }
 
-Data* loadHiggs(){
-    const std::string higgsPath = "/data/higgs/HIGSS.csv";
+/**
+ * @brief Load HIGGS data and perform operations as needed
+ * @param numPos: number of positive examples to be considered
+ * @param numNeg: number of negative examples to be considered
+ * @return X_train: training data
+ * @return X_test: test data
+ * @note X_train, X_test are all Eigen::MatrixXd
+ * @note The original HIGGS dataset has 11 million examples.
+*/
+Data* loadHiggs(int numPos=56540, int numNeg=54323){
+
+    std::cout << "Loading HIGGS data..." << std::endl;
+
+    const std::string higgsPath = "/data/HIGGS/HIGGS.csv";
     std::ifstream higgsFile(higgsPath);
     if (!higgsFile.is_open()) {
         std::cerr << "ERROR: Cannot open HIGGS.csv" << std::endl;
@@ -262,44 +282,57 @@ Data* loadHiggs(){
     std::vector<std::vector<double>> xData;
     std::vector<int> yData;
     std::string line;
+    std::vector<int> posIdx, negIdx;
     long posCount = 0, negCount = 0;
-    std::getline(higgsFile, line); // skip the first line
     while(std::getline(higgsFile, line)) {
         std::vector<double> row;
         std::stringstream ss(line);
         std::string cell;
+        std::getline(ss, cell, ',');
+        int label = std::stoi(cell);
         for(int i = 0; i < 28; i++){
             std::getline(ss, cell, ',');
-            row.push_back(std::stod(cell));
+            if (cell != "NaN" && cell != "nan" && cell != "inf" && cell != "-inf")
+                row.push_back(std::stod(cell));
+            else
+                break;
+        }
+        if (row.size() != 28) {
+            continue;
         }
         xData.push_back(row);
-        std::getline(ss, cell, ',');
-        if(cell == "1"){
+        if(label == 1){
             yData.push_back(1);
+            posIdx.push_back(yData.size() - 1);
             ++posCount;
         }
         else{
             yData.push_back(0);
+            negIdx.push_back(yData.size() - 1);
             ++negCount;
         }
     }
 
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(posIdx.begin(), posIdx.end(), g);
+    std::shuffle(negIdx.begin(), negIdx.end(), g);
     // Convert to Eigen::MatrixXd
-    _Result->X_train = Eigen::MatrixXd(posCount, xData[0].size());
-    _Result->X_test = Eigen::MatrixXd(negCount, xData[0].size());
-    for(size_t i = 0; i < xData.size(); i++){
-        Eigen::VectorXd row = Eigen::VectorXd::Map(xData[i].data(), xData[i].size());
-        if (yData[i] == 1) {
-            _Result->X_train.row(i) = row;
-        }
-        else {
-            _Result->X_test.row(i) = row;
-        }
+    _Result->X_train = Eigen::MatrixXd(numPos, xData[0].size());
+    _Result->X_test = Eigen::MatrixXd(numNeg, xData[0].size());
+
+    for (int i = 0; i < numPos; ++i) {
+        _Result->X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
+    }
+    for (int i = 0; i < numNeg; ++i) {
+        _Result->X_test.row(i) = Eigen::VectorXd::Map(xData[negIdx[i]].data(), xData[negIdx[i]].size());
     }
 
     // MinMaxScale each feature
     _Result->X_train = SCALEDATA(_Result->X_train);
     _Result->X_test = SCALEDATA(_Result->X_test);
+
+    std::cout << "HIGGS data loaded." << std::endl;
 
     return _Result;
 }
@@ -317,6 +350,9 @@ Data* loadFacebook(){
  * @note X_train, X_test are all Eigen::MatrixXd
 */
 Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
+
+    std::cout << "Loading malicious URLs data..." << std::endl;
+
     const std::string maliciousUrlsPath = "/data/malicious_urls/All.csv";
     std::ifstream maliciousUrlsFile(maliciousUrlsPath);
     if (!maliciousUrlsFile.is_open()) {
@@ -395,6 +431,8 @@ Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
     //     outFile << std::endl;
     // }
     // outFile.close();
+
+    std::cout << "Malicious URLs data loaded." << std::endl;
     
     return _Result;
 }

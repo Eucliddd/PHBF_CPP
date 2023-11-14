@@ -12,14 +12,17 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <unordered_set>
 
+#define OPTIMISTIC 1
 
-PHBF::PHBF(int size, int hash_count, int dim, int sample_factor, const std::string& method)
-    : hash_count(hash_count), delta(size / hash_count), method(method), sample_factor(sample_factor), dim(dim) {
+PHBF::PHBF(int hash_count, int dim, int sample_factor, const std::string& method)
+    : hash_count(hash_count), method(method), sample_factor(sample_factor), dim(dim) {
     bit_array.resize(hash_count);
     for (int i = 0; i < hash_count; ++i) {
-        bit_array[i].resize(delta,0);
+        bit_array[i].reset();
     }
+    std::cout << "PHBF Size:" << hash_count * (DELTA + dim) / (double)(8*1024*1024) << std::endl;
 }
 // select best "hash_count" vectors from "sample_size*hash_count" vectors
 /*
@@ -67,14 +70,10 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // Eigen::MatrixXd pos_projections_normalized = SCALEDATA(X * candidates.transpose());
     // Eigen::MatrixXd neg_projections_normalized = SCALEDATA(Y * candidates.transpose());
 
-
-
-    // std::cout<<X.array().isNaN().any()<<std::endl;
-    // std::cout<<Y.array().isNaN().any()<<std::endl;
-    // std::cout<<candidates.array().isNaN().any()<<std::endl;
-
-    Eigen::MatrixXi pos_hash_values = (SCALEDATA(X * candidates.transpose()).array().abs() * (delta - 1)).cast<int>();
-    Eigen::MatrixXi neg_hash_values = (SCALEDATA(Y * candidates.transpose()).array().abs() * (delta - 1)).cast<int>();
+    Eigen::MatrixXi pos_hash_values = (SCALEDATA(X * candidates.transpose()).array().abs() * (DELTA - 1)).cast<int>();
+    std::cout << "pos hash values computed." << std::endl;
+    Eigen::MatrixXi neg_hash_values = (SCALEDATA(Y * candidates.transpose()).array().abs() * (DELTA - 1)).cast<int>();
+    std::cout << "neg hash values computed." << std::endl;
 
     // std::ofstream outFile("hash_values.csv");
     // outFile << "pos_hash_values:" << std::endl;
@@ -94,14 +93,25 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // outFile.close();
 
     // Compute the overlap of the hash values of X and Y
-    Eigen::VectorXi overlaps(sample_size);
+    std::vector<int> overlaps(sample_size);
     for (int i = 0; i < sample_size; ++i) {
+#if !OPTIMISTIC
         // overlap[i] is the size of the intersect between the set of pos_hash_values.col(i) and the set of neg_hash_values.col(i)
-        std::set<int> pos_set(pos_hash_values.col(i).data(), pos_hash_values.col(i).data() + pos_hash_values.col(i).size());
-        std::set<int> neg_set(neg_hash_values.col(i).data(), neg_hash_values.col(i).data() + neg_hash_values.col(i).size());
+        std::unordered_set<int> pos_set(pos_hash_values.col(i).data(), pos_hash_values.col(i).data() + pos_hash_values.col(i).size());
+        std::unordered_set<int> neg_set(neg_hash_values.col(i).data(), neg_hash_values.col(i).data() + neg_hash_values.col(i).size());
         std::vector<int> intersect;
         std::set_intersection(pos_set.begin(), pos_set.end(), neg_set.begin(), neg_set.end(), std::back_inserter(intersect));
         overlaps[i] = intersect.size();
+#else
+        // overlap[i] is the number of the elements in neg_hash_values.col(i) that are also in pos_hash_values.col(i)
+        std::unordered_set<int> pos_set = std::unordered_set<int>(pos_hash_values.col(i).data(), pos_hash_values.col(i).data() + pos_hash_values.col(i).size());
+        //std::map<int,int> pos_map{pos_set.begin(), pos_set.end()};
+        for (int j = 0; j < neg_hash_values.rows(); ++j) {
+            if (pos_set.find(neg_hash_values(j, i)) != pos_set.end()) {
+                overlaps[i]++;
+            }
+        }
+#endif
     }
 
     Eigen::VectorXi best_hashes_idx(sample_size);
@@ -119,17 +129,17 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
         best_hashes.row(i) = candidates.row(best_hashes_idx[i]);
     }
 
-    std::ofstream outFile1("overlaps&best_overlaps.csv");
-    // outFile1 << "overlaps:" << std::endl;
-    // for (int i = 0; i < overlaps.size(); ++i) {
-    //     outFile1 << overlaps[i] << ",";
+    // std::ofstream outFile1("overlaps&best_overlaps.csv");
+    // // outFile1 << "overlaps:" << std::endl;
+    // // for (int i = 0; i < overlaps.size(); ++i) {
+    // //     outFile1 << overlaps[i] << ",";
+    // // }
+    // // outFile1 << std::endl;
+    // outFile1 << "best_overlaps:" << std::endl;
+    // for (int i = 0; i < hash_count; ++i) {
+    //      outFile1 << overlaps[best_hashes_idx[i]] << ",";
     // }
-    // outFile1 << std::endl;
-    outFile1 << "best_overlaps:" << std::endl;
-    for (int i = 0; i < hash_count; ++i) {
-         outFile1 << overlaps[best_hashes_idx[i]] << ",";
-    }
-    outFile1.close();
+    // outFile1.close();
 
     return best_hashes;
 }
@@ -148,7 +158,7 @@ void PHBF::initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
 }
 
 // Compute the hash values of X
-Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
+inline Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
     // Eigen::MatrixXd projections = X * vectors;
 
     // // MinMaxScaler to normalize each column after projection
@@ -168,21 +178,22 @@ Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
     //     }
     // }
 
-    return (SCALEDATA(X * vectors).array().abs() * (delta - 1)).cast<int>();
+    return (SCALEDATA(X * vectors).array().abs() * (DELTA - 1)).cast<int>();
 }
 
 void PHBF::bulk_add(const Eigen::MatrixXd& X) {
+    std::cout << "Add all keys..." << std::endl;
     Eigen::MatrixXi indexes = compute_hashes(X);
 
-    std::ofstream outFile("pos_hash_values.csv");
-    outFile << "pos_hash_values:" << std::endl;
-    for (int i = 0; i < indexes.rows(); ++i) {
-        for (int j = 0; j < indexes.cols(); ++j) {
-            outFile << indexes(i, j) << ",";
-        }
-        outFile << std::endl;
-    }
-    outFile.close();
+    // std::ofstream outFile("pos_hash_values.csv");
+    // outFile << "pos_hash_values:" << std::endl;
+    // for (int i = 0; i < indexes.rows(); ++i) {
+    //     for (int j = 0; j < indexes.cols(); ++j) {
+    //         outFile << indexes(i, j) << ",";
+    //     }
+    //     outFile << std::endl;
+    // }
+    // outFile.close();
 
     for (int i = 0; i < indexes.cols(); ++i) {
         for (int j = 0; j < indexes.rows(); ++j) {
@@ -197,15 +208,15 @@ bool* PHBF::lookup(const Eigen::MatrixXd& X) {
     std::fill(results, results + X.rows(), true);
     Eigen::MatrixXi hash_values = compute_hashes(X);
 
-    std::ofstream outFile("neg_hash_values.csv");
-    outFile << "neg_hash_values:" << std::endl;
-    for (int i = 0; i < hash_values.rows(); ++i) {
-        for (int j = 0; j < hash_values.cols(); ++j) {
-            outFile << hash_values(i, j) << ",";
-        }
-        outFile << std::endl;
-    }
-    outFile.close();
+    // std::ofstream outFile("neg_hash_values.csv");
+    // outFile << "neg_hash_values:" << std::endl;
+    // for (int i = 0; i < hash_values.rows(); ++i) {
+    //     for (int j = 0; j < hash_values.cols(); ++j) {
+    //         outFile << hash_values(i, j) << ",";
+    //     }
+    //     outFile << std::endl;
+    // }
+    // outFile.close();
 
     for (int i = 0; i < hash_values.rows(); ++i) {
         for (int j = 0; j < hash_values.cols(); ++j) {
@@ -224,15 +235,27 @@ long double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
     long double fp = 0;
     long double tn = 0;
     bool* results = lookup(X);
-
+    //Eigen::MatrixXi hash_values = compute_hashes(X);
     for (int i = 0; i < X.rows(); ++i) {
         if (results[i]) {
+            //Eigen::RowVectorXi hash_values = compute_hashes(X.row(i));
+            // std::cout << i << "th hash_values: " << hash_values.row(i) << std::endl;
+            // for (int j = 0; j < hash_values.cols(); ++j) {
+            //     int hash_value = hash_values(i, j);
+            //     if (bit_array[j][hash_value]) {
+            //         std::cout << "hash_value: " << hash_value << std::endl;
+            //         std::cout << "bit_array: " << bit_array[j] << std::endl;
+            //     }
+            // }
             fp++;
         }
         else {
             tn++;
         }
     }
+
+    // std::cout << "fp: " << fp << std::endl;
+    // std::cout << "tn: " << tn << std::endl;
 
     return static_cast<long double>(fp) / (fp + tn);
 }
