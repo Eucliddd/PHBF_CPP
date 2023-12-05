@@ -16,8 +16,8 @@
 
 #define OPTIMISTIC 1
 
-PHBF::PHBF(int hash_count, int dim, int sample_factor, const std::string& method)
-    : hash_count(hash_count), method(method), sample_factor(sample_factor), dim(dim) {
+PHBF::PHBF(const int hash_count, const int dim, const int sample_factor, const std::string& method) noexcept
+    : hash_count(hash_count), method(method), sample_factor(sample_factor), dim(dim){
     bit_array.resize(hash_count);
     for (int i = 0; i < hash_count; ++i) {
         bit_array[i].reset();
@@ -33,7 +33,7 @@ PHBF::PHBF(int hash_count, int dim, int sample_factor, const std::string& method
     * 5. compute the overlap of the hash values of X and Y
     * 6. select the best "hash_count" vectors
 */
-Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
+Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) const noexcept{
     int sample_size = hash_count * sample_factor;
     Eigen::MatrixXd candidates(sample_size, dim);
 
@@ -70,10 +70,12 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // Eigen::MatrixXd pos_projections_normalized = SCALEDATA(X * candidates.transpose());
     // Eigen::MatrixXd neg_projections_normalized = SCALEDATA(Y * candidates.transpose());
 
-    Eigen::MatrixXi pos_hash_values = (SCALEDATA(X * candidates.transpose()).array().abs() * (DELTA - 1)).cast<int>();
-    std::cout << "pos hash values computed." << std::endl;
-    Eigen::MatrixXi neg_hash_values = (SCALEDATA(Y * candidates.transpose()).array().abs() * (DELTA - 1)).cast<int>();
-    std::cout << "neg hash values computed." << std::endl;
+
+    Eigen::MatrixXi pos_hash_values = std::move((SCALEDATA(X * candidates.transpose()).array().abs() * (DELTA)).array().cast<int>());
+    //std::cout << "pos hash values computed." << std::endl;
+    Eigen::MatrixXi neg_hash_values = std::move((SCALEDATA(Y * candidates.transpose()).array().abs() * (DELTA)).array().cast<int>());
+    //std::cout << "neg hash values computed." << std::endl;
+    
 
     // std::ofstream outFile("hash_values.csv");
     // outFile << "pos_hash_values:" << std::endl;
@@ -141,24 +143,24 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // }
     // outFile1.close();
 
-    return best_hashes;
+    return best_hashes.transpose();
 }
 
-Eigen::MatrixXd PHBF::_normalize_vectors(Eigen::MatrixXd vectors) {
+Eigen::MatrixXd PHBF::_normalize_vectors(Eigen::MatrixXd vectors) noexcept{
     for (int i = 0; i < vectors.rows(); ++i) {
         vectors.row(i).normalize();
     }
     return vectors;
 }
 
-void PHBF::initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) {
-    Eigen::MatrixXd vectors = _select_vectors(X, Y);
+void PHBF::initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y)  noexcept{
+    //Eigen::MatrixXd&& vectors = _select_vectors(X, Y);
     //vectors = _normalize_vectors(vectors);
-    this->vectors = vectors.transpose();
+    this->vectors = std::move(_select_vectors(X, Y));
 }
 
 // Compute the hash values of X
-inline Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
+inline Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) const noexcept{
     // Eigen::MatrixXd projections = X * vectors;
 
     // // MinMaxScaler to normalize each column after projection
@@ -177,13 +179,20 @@ inline Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) {
     //         }
     //     }
     // }
-
-    return (SCALEDATA(X * vectors).array().abs() * (DELTA - 1)).cast<int>();
+#if TEST_SCALER
+    return (SCALER(X * vectors, min, max).array().abs() * (DELTA)).cast<int>();
+#else
+    return (SCALEDATA(X * vectors).array().abs() * (DELTA)).cast<int>();
+#endif
 }
 
 void PHBF::bulk_add(const Eigen::MatrixXd& X) {
     std::cout << "Add all keys..." << std::endl;
-    Eigen::MatrixXi indexes = compute_hashes(X);
+#if TEST_SCALER
+    min = (X * vectors).colwise().minCoeff();
+    max = (X * vectors).colwise().maxCoeff();
+#endif
+    Eigen::MatrixXi indexes = std::move(compute_hashes(X));
 
     // std::ofstream outFile("pos_hash_values.csv");
     // outFile << "pos_hash_values:" << std::endl;
@@ -203,10 +212,11 @@ void PHBF::bulk_add(const Eigen::MatrixXd& X) {
     }
 }
 
-bool* PHBF::lookup(const Eigen::MatrixXd& X) {
-    bool* results = new bool[X.rows()];
-    std::fill(results, results + X.rows(), true);
-    Eigen::MatrixXi hash_values = compute_hashes(X);
+auto PHBF::lookup(const Eigen::MatrixXd& X) const{
+    //bool* results = new bool[X.rows()];
+    auto results = std::unique_ptr<bool[]>(new bool[X.rows()]); 
+    std::fill(results.get(), results.get() + X.rows(), true);
+    Eigen::MatrixXi hash_values = std::move(compute_hashes(X));
 
     // std::ofstream outFile("neg_hash_values.csv");
     // outFile << "neg_hash_values:" << std::endl;
@@ -228,13 +238,13 @@ bool* PHBF::lookup(const Eigen::MatrixXd& X) {
 
         }
     }
-    return results;
+    return std::move(results);
 }
 
-long double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
+long double PHBF::compute_fpr(const Eigen::MatrixXd& X) const{
     long double fp = 0;
     long double tn = 0;
-    bool* results = lookup(X);
+    const auto results(lookup(X));
     //Eigen::MatrixXi hash_values = compute_hashes(X);
     for (int i = 0; i < X.rows(); ++i) {
         if (results[i]) {
@@ -253,7 +263,6 @@ long double PHBF::compute_fpr(const Eigen::MatrixXd& X) {
             tn++;
         }
     }
-
     // std::cout << "fp: " << fp << std::endl;
     // std::cout << "tn: " << tn << std::endl;
 

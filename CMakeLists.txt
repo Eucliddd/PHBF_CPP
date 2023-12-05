@@ -45,4 +45,6 @@ add_executable(PHBF_CPP ${DIR_SRCS})
 
 target_link_libraries(PHBF_CPP PRIVATE ${MKL_LIBRARIES})
 
+target_link_libraries(PHBF_CPP PRIVATE -lstdc++fs)
+
 target_link_libraries(PHBF_CPP PRIVATE util)

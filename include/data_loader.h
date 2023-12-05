@@ -11,11 +11,14 @@
 #include <arpa/inet.h>
 #include <Eigen/Dense>
 #include "tools.h"
+#include <cassert>
+#include <memory>
 
-typedef struct Data {
+class Data {
+public:
     Eigen::MatrixXd X_train;
     Eigen::MatrixXd X_test;
-} Data;
+};
 
 
 /**
@@ -27,7 +30,7 @@ typedef struct Data {
  * @return X_test: test data
  * @note X, X_test are all Eigen::MatrixXd
 */
-Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
+auto loadMnist(const std::vector<int>& posDigits, const int numPos=6000, const int numNeg=6000) {
     // Load MNIST data
     std::cout << "Loading MNIST data..." << std::endl;
     const std::string mnistPath = "/data/mnist/";
@@ -61,7 +64,7 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
         exit(1);
     }
 
-    Data* _Result = new Data();
+    auto _Result = std::make_unique<Data>();
 
     // Read training images
     int magicNumber1 = 0, magicNumber2 = 0, numImages1 = 0, numImages2 = 0, numRows = 0, numCols = 0;
@@ -82,17 +85,16 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     // Read training data
     Eigen::MatrixXd X(numImages1, numRows * numCols);
     //Eigen::MatrixXd Y(numImages2, 10);
-    _Result->X_train = Eigen::MatrixXd(numPos, numRows * numCols);
+    _Result->X_train.resize(numPos, numRows * numCols);
     //_Result->Y = Eigen::MatrixXd(numPos, 10);
     //long posCount = 0, negCount = 0;
     std::vector<int> sampleIdx;
     for (int i = 0; i < numImages1; ++i) {
-        char* pixels = new char[numRows * numCols];
-        trainImagesFile.read(pixels, numRows * numCols);
+        auto pixels = std::make_unique<char[]>(numRows * numCols);
+        trainImagesFile.read(pixels.get(), numRows * numCols);
         for (int j = 0; j < numRows * numCols; ++j) {
             X(i, j) = (unsigned char)pixels[j];
         }
-        delete[] pixels;
 
         char label;
         trainLabelsFile.read(&label, 1);
@@ -136,17 +138,16 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     // Read test data
     Eigen::MatrixXd X_test(numImages1, numRows * numCols);
     //Eigen::MatrixXd Y_test(numImages2, 10);
-    _Result->X_test = Eigen::MatrixXd(numNeg, numRows * numCols);
+    _Result->X_test.resize(numNeg, numRows * numCols);
     //_Result->Y_test = Eigen::MatrixXd(numNeg, 10);
     //posCount = 0, negCount = 0;
     sampleIdx.clear();
     for (int i = 0; i < numImages1; ++i) {
-        char* pixels = new char[numRows * numCols];
-        testImagesFile.read(pixels, numRows * numCols);
+        auto pixels = std::make_unique<char[]>(numRows * numCols);
+        testImagesFile.read(pixels.get(), numRows * numCols);
         for (int j = 0; j < numRows * numCols; ++j) {
             X_test(i, j) = (unsigned char)pixels[j];
         }
-        delete[] pixels;
 
         char label;
         testLabelsFile.read(&label, 1);
@@ -170,8 +171,8 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
     }
 
     // MinMaxScale each feature
-    _Result->X_train = SCALEDATA(_Result->X_train);
-    _Result->X_test = SCALEDATA(_Result->X_test);
+    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     // Close files
     trainImagesFile.close();
@@ -192,22 +193,24 @@ Data* loadMnist(std::vector<int> posDigits, int numPos=6000, int numNeg=6000) {
  * @return X_test: test data
  * @note X, X_test are all Eigen::MatrixXd
 */
-Data* loadKitsune(const std::string& attack="Mirai"){
+auto loadKitsune(const std::string& attack="Mirai"){
 
     std::cout << "Loading KITSUNE data..." << std::endl;
 
-    std::ifstream xFile("/data/kitsune/" + attack + "_dataset.csv");
-    std::ifstream yFile("/data/kitsune/" + attack + "_labels.csv");
+    std::ifstream xFile("/data/Kitsune/" + attack + "_dataset.csv");
+    std::ifstream yFile("/data/Kitsune/" + attack + "_labels.csv");
     if (!xFile || !yFile) {
         std::cerr << "Failed to open data files." << std::endl;
         exit(1);
     }
 
-    Data* _Result = new Data();
+    auto _Result = std::make_unique<Data>();
 
     // Read data
     std::vector<std::vector<double>> xData;
     std::vector<int> yData;
+    std::vector<size_t> posIdx;
+    std::vector<size_t> negIdx;
     std::string line;
     long posCount = 0, negCount = 0;
     while(std::getline(xFile, line)) {
@@ -215,45 +218,113 @@ Data* loadKitsune(const std::string& attack="Mirai"){
         std::stringstream ss(line);
         std::string cell;
         while(std::getline(ss, cell, ',')) {
-            row.push_back(std::stod(cell));
+            try
+            {
+                row.push_back(std::stod(cell));
+            }
+            catch(const std::exception& e)
+            {
+                //std::cerr << e.what() << std::endl;
+                row.push_back(0);
+            }
         }
         xData.push_back(row);
     }
+
     while(std::getline(yFile, line)) {
         int label = std::stoi(line);
         yData.push_back(label);
         if (label == 1) {
             ++posCount;
+            posIdx.push_back(yData.size() - 1);
         }
         else {
             ++negCount;
+            negIdx.push_back(yData.size() - 1);
         }
     }
 
     // Convert to Eigen::MatrixXd
     _Result->X_train = Eigen::MatrixXd(posCount, xData[0].size());
     _Result->X_test = Eigen::MatrixXd(negCount, xData[0].size());
-    for(size_t i = 0; i < xData.size(); i++){
-        Eigen::VectorXd row = Eigen::VectorXd::Map(xData[i].data(), xData[i].size());
-        if (yData[i] == 1) {
-            _Result->X_train.row(i) = row;
-        }
-        else {
-            _Result->X_test.row(i) = row;
-        }
+
+    for(size_t i=0; i < posCount; ++i) {
+        _Result->X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
+    }
+    for(size_t i=0; i < negCount; ++i) {
+        _Result->X_test.row(i) = Eigen::VectorXd::Map(xData[negIdx[i]].data(), xData[negIdx[i]].size());
     }
     
     // MinMaxScale each feature
-    _Result->X_train = SCALEDATA(_Result->X_train); 
-    _Result->X_test = SCALEDATA(_Result->X_test);
+    _Result->X_train = std::move(SCALEDATA(_Result->X_train)); 
+    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     std::cout << "KITSUNE data loaded." << std::endl;
 
     return _Result;
 }
 
-Data* loadEmber(){
+auto loadEmber(){
+    std::cout << "Loading EMBER data..." << std::endl;
 
+    std::ifstream xFile("/data/EMBER/ember_pos.csv");
+    std::ifstream yFile("/data/EMBER/ember_neg.csv");
+
+    if (!xFile || !yFile) {
+        std::cerr << "Failed to open data files." << std::endl;
+        exit(1);
+    }
+
+    auto _Result = std::make_unique<Data>();
+    _Result->X_train.resize(400000, 2381);
+    _Result->X_test.resize(400000, 2381);
+    // Read data
+    std::string line;
+    int i = 0;
+    while(std::getline(xFile, line)) {
+        std::vector<double> row;
+        std::stringstream ss(line);
+        std::string cell;
+        while(std::getline(ss, cell, ',')) {
+            try
+            {
+                row.push_back(std::stod(cell));
+            }
+            catch(const std::exception& e)
+            {
+                row.push_back(0);
+            }
+        }
+        _Result->X_train.row(i++) = Eigen::VectorXd::Map(row.data(), row.size());
+    }
+    std::cout << "X_train loaded:" << i << std::endl;
+    
+    i = 0;
+    while(std::getline(yFile, line)) {
+        std::vector<double> row;
+        std::stringstream ss(line);
+        std::string cell;
+        while(std::getline(ss, cell, ',')) {
+            try
+            {
+                row.push_back(std::stod(cell));
+            }
+            catch(const std::exception& e)
+            {
+                row.push_back(0);
+            }
+        }
+        _Result->X_test.row(i++) = Eigen::VectorXd::Map(row.data(), row.size());
+    }
+    std::cout << "X_test loaded:" << i << std::endl;
+
+    // MinMaxScale each feature
+    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
+
+    std::cout << "EMBER data loaded." << std::endl;
+
+    return _Result;
 }
 
 /**
@@ -265,7 +336,7 @@ Data* loadEmber(){
  * @note X_train, X_test are all Eigen::MatrixXd
  * @note The original HIGGS dataset has 11 million examples.
 */
-Data* loadHiggs(int numPos=56540, int numNeg=54323){
+auto loadHiggs(const int numPos=56540, const int numNeg=54323){
 
     std::cout << "Loading HIGGS data..." << std::endl;
 
@@ -276,7 +347,7 @@ Data* loadHiggs(int numPos=56540, int numNeg=54323){
         exit(1);
     }
 
-    Data* _Result = new Data();
+    auto _Result = std::make_unique<Data>();
 
     // Read data
     std::vector<std::vector<double>> xData;
@@ -318,8 +389,8 @@ Data* loadHiggs(int numPos=56540, int numNeg=54323){
     std::shuffle(posIdx.begin(), posIdx.end(), g);
     std::shuffle(negIdx.begin(), negIdx.end(), g);
     // Convert to Eigen::MatrixXd
-    _Result->X_train = Eigen::MatrixXd(numPos, xData[0].size());
-    _Result->X_test = Eigen::MatrixXd(numNeg, xData[0].size());
+    _Result->X_train.resize(numPos, xData[0].size());
+    _Result->X_test.resize(numNeg, xData[0].size());
 
     for (int i = 0; i < numPos; ++i) {
         _Result->X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
@@ -329,8 +400,8 @@ Data* loadHiggs(int numPos=56540, int numNeg=54323){
     }
 
     // MinMaxScale each feature
-    _Result->X_train = SCALEDATA(_Result->X_train);
-    _Result->X_test = SCALEDATA(_Result->X_test);
+    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     std::cout << "HIGGS data loaded." << std::endl;
 
@@ -349,7 +420,7 @@ Data* loadFacebook(){
  * @return X_test: test data
  * @note X_train, X_test are all Eigen::MatrixXd
 */
-Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
+auto loadMaliciousUrls(const int numPos=16273, const int numNeg=2709){
 
     std::cout << "Loading malicious URLs data..." << std::endl;
 
@@ -360,7 +431,7 @@ Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
         exit(1);
     }
     
-    Data* _Result = new Data();
+    auto _Result = std::make_unique<Data>();
 
     // Read data
     std::vector<std::vector<double>> xData;
@@ -402,8 +473,8 @@ Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
     std::mt19937 g(rd());
     std::shuffle(posIdx.begin(), posIdx.end(), g);
     std::shuffle(negIdx.begin(), negIdx.end(), g);
-    _Result->X_train = Eigen::MatrixXd(numPos, xData[0].size());
-    _Result->X_test = Eigen::MatrixXd(numNeg, xData[0].size());
+    _Result->X_train.resize(numPos, xData[0].size());
+    _Result->X_test.resize(numNeg, xData[0].size());
     for (int i = 0; i < numPos; ++i) {
         _Result->X_train.row(i) = Eigen::VectorXd::Map(xData[posIdx[i]].data(), xData[posIdx[i]].size());
     }
@@ -412,8 +483,8 @@ Data* loadMaliciousUrls(int numPos=16273, int numNeg=2709){
     }
 
     // MinMaxScale each feature
-    _Result->X_train = SCALEDATA(_Result->X_train);
-    _Result->X_test = SCALEDATA(_Result->X_test);
+    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     // std::ofstream outFile("malicious_urls.csv");
     // outFile << "X_train:" << std::endl;
