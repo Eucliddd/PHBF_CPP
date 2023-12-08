@@ -41,7 +41,7 @@ void testRandom() {
                   << std::endl;
 }
 
-void testDataset(const std::string& dataset, const unsigned sample_factor, const double bpr) {
+void testDataset(const std::string& dataset, const std::string& filter, const unsigned sample_factor, const double bpr) {
     
     auto data{loaders[dataset]()};
     unsigned dim = data->X_train.cols();
@@ -51,7 +51,7 @@ void testDataset(const std::string& dataset, const unsigned sample_factor, const
     double per = (double) total_size / (data->X_train.rows() * 8);
     //int sample_factor = 100;
     //double bytes_per_element[] = {0.01,0.08,0.16,0.23,0.3,0.4,0.5,0.6};
-    {
+    if(filter == "phbf"){
         std::string phbf_csv = "phbf_" + dataset + ".csv";
         if(!std::filesystem::exists(phbf_csv)){
             std::ofstream outFile(phbf_csv);
@@ -74,10 +74,10 @@ void testDataset(const std::string& dataset, const unsigned sample_factor, const
 
         outFile << per << "," << fpr << "," << construction_time << "," << query_time << std::endl;
         phbf = nullptr;
+        data = nullptr;
         outFile.close();
     }
-
-    {
+    else if (filter == "habf"){
         std::string habf_csv = "habf_" + dataset + ".csv";
         dataloader dl;
         dl.load(data->X_train, data->X_test);
@@ -103,7 +103,11 @@ void testDataset(const std::string& dataset, const unsigned sample_factor, const
         outFile << per << "," << fpr << "," << construction_time << "," << query_time << std::endl;
         outFile.close();
     }
-
+    else{
+        std::cout << "Invalid Filter" << std::endl;
+        std::cout << "Valid Filters: phbf, habf" << std::endl;
+        return;
+    }
     std::cout << "Dataset: " << dataset << " Complete!" << std::endl;
     std::cout << "==============================" << std::endl;
 }
@@ -122,7 +126,8 @@ int main(int argc, char** argv) {
     unsigned sample_factor = 0;
     double bpr = 0.0;
     std::string dataset = "";
-    while((o = getopt(argc, argv, "s:b:d:h::")) != -1){
+    std::string filter = "";
+    while((o = getopt(argc, argv, "f:s:b:d:h::")) != -1){
         switch(o){
             case 's':
                 sample_factor = atoi(optarg);
@@ -133,14 +138,19 @@ int main(int argc, char** argv) {
             case 'd':
                 dataset = optarg;
                 break;
+            case 'f':
+                filter = optarg;
+                break;
             case 'h':
-                std::cout << "Usage: ./PHBF_CPP -s sample_factor -b bytes_per_element -d dataset" << std::endl;
+                std::cout << "Usage: ./PHBF_CPP -s sample_factor -b bytes_per_element -d dataset -f filter" << std::endl;
                 std::cout << "Valid Datasets: mnist, malicious_urls, higgs, kitsune, ember" << std::endl;
+                std::cout << "Valid Filters: phbf, habf" << std::endl;
                 return 0;
             default:
                 std::cout << "Invalid option" << std::endl;
                 std::cout << "Usage: ./PHBF_CPP -s sample_factor -b bytes_per_element -d dataset" << std::endl;
                 std::cout << "Valid Datasets: mnist, malicious_urls, higgs, kitsune, ember" << std::endl;
+                std::cout << "Valid Filters: phbf, habf" << std::endl;
                 return 1;
         }
     }
@@ -151,7 +161,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    testDataset(dataset,sample_factor,bpr);
+    testDataset(dataset,filter,sample_factor,bpr);
 
     //testRandom();
     // testMaliciousUrls();
