@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -fopenmp -DMKL_ILP64 -m64")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -fopenmp -DMKL_ILP64 -m64 -std=c++2a -fconcepts")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 

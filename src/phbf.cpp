@@ -191,7 +191,7 @@ inline Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) const noex
 #endif
 }
 
-void PHBF::bulk_add(const Eigen::MatrixXd& X) {
+void PHBF::bulk_add(const Eigen::MatrixXd& X) noexcept{
     std::cout << "Add all keys..." << std::endl;
 #if TEST_SCALER
     min = (X * vectors).colwise().minCoeff();
@@ -216,6 +216,13 @@ void PHBF::bulk_add(const Eigen::MatrixXd& X) {
         }
     }
 }
+
+void PHBF::initandadd(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) noexcept{
+    std::cout << "Initialize..." << std::endl;
+    initialize(X, Y);
+    bulk_add(X);
+}
+
 
 auto PHBF::lookup(const Eigen::MatrixXd& X) const{
     //bool* results = new bool[X.rows()];

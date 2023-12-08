@@ -61,18 +61,16 @@ void testDataset(const std::string& dataset, const std::string& filter, const un
         std::ofstream outFile(phbf_csv, std::ios_base::app);
         auto phbf = std::make_unique<PHBF>(hash_count, dim, sample_factor, "gaussian");
 
-        auto t1 = steady_clock::now();
-        phbf->initialize(data->X_train, data->X_test);
-        phbf->bulk_add(data->X_train);
-        auto t2 = steady_clock::now();
-        auto construction_time = duration_cast<milliseconds>(t2 - t1).count();
+        // auto t1 = steady_clock::now();
+        // phbf->initialize(data->X_train, data->X_test);
+        // phbf->bulk_add(data->X_train);
+        // auto t2 = steady_clock::now();
+        // auto construction_time = duration_cast<milliseconds>(t2 - t1).count();
+        auto [_, construction_time] = TIME(&PHBF::initandadd, phbf.get(), data->X_train, data->X_test);
 
-        t1 = steady_clock::now();
-        auto fpr = phbf->compute_fpr(data->X_test);
-        t2 = steady_clock::now();
-        auto query_time = duration_cast<milliseconds>(t2 - t1).count();
+        auto [fpr, query_time] = TIME(&PHBF::compute_fpr, phbf.get(), data->X_test);
 
-        outFile << per << "," << fpr << "," << construction_time << "," << query_time << std::endl;
+        outFile << per << "," << fpr.value() << "," << construction_time << "," << query_time << std::endl;
         phbf = nullptr;
         data = nullptr;
         outFile.close();

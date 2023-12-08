@@ -15,7 +15,8 @@ public:
     PHBF(const int hash_count, const int dim, const int sample_factor = 100, const std::string& method = "gaussian") noexcept;
 
     void initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) noexcept;
-    void bulk_add(const Eigen::MatrixXd& X);
+    void bulk_add(const Eigen::MatrixXd& X) noexcept;
+    void initandadd(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) noexcept;
     auto lookup(const Eigen::MatrixXd& X) const;
     long double compute_fpr(const Eigen::MatrixXd& X) const;
 
