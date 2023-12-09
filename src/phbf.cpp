@@ -70,10 +70,14 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
     // Eigen::MatrixXd pos_projections_normalized = SCALEDATA(X * candidates.transpose());
     // Eigen::MatrixXd neg_projections_normalized = SCALEDATA(Y * candidates.transpose());
 
-
-    Eigen::MatrixXi pos_hash_values = std::move((SCALEDATA(X * candidates.transpose()).array().abs() * (DELTA)).array().cast<int>());
+ 
+    Eigen::MatrixXi&& pos_hash_values = (SCALEDATA(static_cast<Eigen::MatrixXd>(X * candidates.transpose()))
+                                        .array().abs() * (DELTA))
+                                        .array().cast<int>();
     //std::cout << "pos hash values computed." << std::endl;
-    Eigen::MatrixXi neg_hash_values = std::move((SCALEDATA(Y * candidates.transpose()).array().abs() * (DELTA)).array().cast<int>());
+    Eigen::MatrixXi&& neg_hash_values = (SCALEDATA(static_cast<Eigen::MatrixXd>(Y * candidates.transpose()))
+                                        .array().abs() * (DELTA))
+                                        .array().cast<int>();
     //std::cout << "neg hash values computed." << std::endl;
     
 
@@ -106,7 +110,7 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
         overlaps[i] = intersect.size();
 #else
         // overlap[i] is the number of the elements in neg_hash_values.col(i) that are also in pos_hash_values.col(i)
-        std::unordered_set<int> pos_set = std::unordered_set<int>(pos_hash_values.col(i).data(), pos_hash_values.col(i).data() + pos_hash_values.col(i).size());
+        std::unordered_set<int> pos_set(pos_hash_values.col(i).data(), pos_hash_values.col(i).data() + pos_hash_values.col(i).size());
         //std::map<int,int> pos_map{pos_set.begin(), pos_set.end()};
         for (int j = 0; j < neg_hash_values.rows(); ++j) {
             if (pos_set.find(neg_hash_values(j, i)) != pos_set.end()) {
@@ -197,7 +201,7 @@ void PHBF::bulk_add(const Eigen::MatrixXd& X) noexcept{
     min = (X * vectors).colwise().minCoeff();
     max = (X * vectors).colwise().maxCoeff();
 #endif
-    Eigen::MatrixXi&& indexes = std::move(compute_hashes(X));
+    Eigen::MatrixXi&& indexes = compute_hashes(X);
 
     // std::ofstream outFile("pos_hash_values.csv");
     // outFile << "pos_hash_values:" << std::endl;
@@ -250,7 +254,7 @@ auto PHBF::lookup(const Eigen::MatrixXd& X) const{
 
         }
     }
-    return std::move(results);
+    return results;
 }
 
 long double PHBF::compute_fpr(const Eigen::MatrixXd& X) const{

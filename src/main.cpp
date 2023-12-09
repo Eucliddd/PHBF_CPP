@@ -88,17 +88,12 @@ void testDataset(const std::string& dataset, const std::string& filter, const un
         std::ofstream outFile(habf_csv, std::ios_base::app);
         habf::HABFilter habf(per*8, dl.pos_keys_.size());
 
-        auto t1 = steady_clock::now();
-        habf.AddAndOptimize(dl.pos_keys_,dl.neg_keys_);
-        auto t2 = steady_clock::now();
-        auto construction_time = duration_cast<milliseconds>(t2 - t1).count();
 
-        t1 = steady_clock::now();
-        auto fpr = habf.compute_fpr(dl.neg_keys_);
-        t2 = steady_clock::now();
-        auto query_time = duration_cast<milliseconds>(t2 - t1).count();
+        auto [_, construction_time] = TIME(&habf::HABFilter::AddAndOptimize, &habf, dl.pos_keys_,dl.neg_keys_);
 
-        outFile << per << "," << fpr << "," << construction_time << "," << query_time << std::endl;
+        auto [fpr, query_time] = TIME(&habf::HABFilter::compute_fpr, &habf, dl.neg_keys_);
+
+        outFile << per << "," << fpr.value() << "," << construction_time << "," << query_time << std::endl;
         outFile.close();
     }
     else{
