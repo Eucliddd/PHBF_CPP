@@ -20,7 +20,7 @@ public:
     Eigen::MatrixXd X_test;
 };
 
-
+const std::string rootpath = "/data1/syx/data/";
 /**
  * @brief Load MNIST data and perform operations as needed
  * @param posDigits: vector of digits to be considered as positive
@@ -33,7 +33,7 @@ public:
 auto loadMnist(const std::vector<int>& posDigits, const int numPos=6000, const int numNeg=6000) {
     // Load MNIST data
     std::cout << "Loading MNIST data..." << std::endl;
-    const std::string mnistPath = "/data/mnist/";
+    const std::string mnistPath = rootpath + "mnist/";
     std::string trainImagesPath = mnistPath + "train-images.idx3-ubyte";
     std::string trainLabelsPath = mnistPath + "train-labels.idx1-ubyte";
     std::string testImagesPath = mnistPath + "t10k-images.idx3-ubyte";
@@ -197,8 +197,8 @@ auto loadKitsune(const std::string& attack="Mirai"){
 
     std::cout << "Loading KITSUNE data..." << std::endl;
 
-    std::ifstream xFile("/data/Kitsune/" + attack + "_dataset.csv");
-    std::ifstream yFile("/data/Kitsune/" + attack + "_labels.csv");
+    std::ifstream xFile(rootpath + "Kitsune/" + attack + "_dataset.csv");
+    std::ifstream yFile(rootpath + "Kitsune/" + attack + "_labels.csv");
     if (!xFile || !yFile) {
         std::cerr << "Failed to open data files." << std::endl;
         exit(1);
@@ -230,6 +230,7 @@ auto loadKitsune(const std::string& attack="Mirai"){
         }
         xData.push_back(row);
     }
+    xFile.close();
 
     while(std::getline(yFile, line)) {
         int label = std::stoi(line);
@@ -243,6 +244,7 @@ auto loadKitsune(const std::string& attack="Mirai"){
             negIdx.push_back(yData.size() - 1);
         }
     }
+    yFile.close();
 
     // Convert to Eigen::MatrixXd
     _Result->X_train = Eigen::MatrixXd(posCount, xData[0].size());
@@ -267,8 +269,8 @@ auto loadKitsune(const std::string& attack="Mirai"){
 auto loadEmber(){
     std::cout << "Loading EMBER data..." << std::endl;
 
-    std::ifstream xFile("/data/EMBER/ember_pos.csv");
-    std::ifstream yFile("/data/EMBER/ember_neg.csv");
+    std::ifstream xFile(rootpath + "EMBER/ember_pos.csv");
+    std::ifstream yFile(rootpath + "EMBER/ember_neg.csv");
 
     if (!xFile || !yFile) {
         std::cerr << "Failed to open data files." << std::endl;
@@ -297,7 +299,8 @@ auto loadEmber(){
         }
         _Result->X_train.row(i++) = Eigen::VectorXd::Map(row.data(), row.size());
     }
-    std::cout << "X_train loaded:" << i << std::endl;
+    // std::cout << "X_train loaded:" << i << std::endl;
+    xFile.close();
     
     i = 0;
     while(std::getline(yFile, line)) {
@@ -316,7 +319,8 @@ auto loadEmber(){
         }
         _Result->X_test.row(i++) = Eigen::VectorXd::Map(row.data(), row.size());
     }
-    std::cout << "X_test loaded:" << i << std::endl;
+    // std::cout << "X_test loaded:" << i << std::endl;
+    yFile.close();
 
     // MinMaxScale each feature
     _Result->X_train = std::move(SCALEDATA(_Result->X_train));
@@ -340,7 +344,7 @@ auto loadHiggs(const int numPos=56540, const int numNeg=54323){
 
     std::cout << "Loading HIGGS data..." << std::endl;
 
-    const std::string higgsPath = "/data/HIGGS/HIGGS.csv";
+    const std::string higgsPath = rootpath + "HIGGS/HIGGS.csv";
     std::ifstream higgsFile(higgsPath);
     if (!higgsFile.is_open()) {
         std::cerr << "ERROR: Cannot open HIGGS.csv" << std::endl;
@@ -383,6 +387,7 @@ auto loadHiggs(const int numPos=56540, const int numNeg=54323){
             ++negCount;
         }
     }
+    higgsFile.close();
 
     std::random_device rd;
     std::mt19937 g(rd());
@@ -424,7 +429,7 @@ auto loadMaliciousUrls(const int numPos=16273, const int numNeg=2709){
 
     std::cout << "Loading malicious URLs data..." << std::endl;
 
-    const std::string maliciousUrlsPath = "/data/malicious_urls/All.csv";
+    const std::string maliciousUrlsPath = rootpath + "malicious_urls/All.csv";
     std::ifstream maliciousUrlsFile(maliciousUrlsPath);
     if (!maliciousUrlsFile.is_open()) {
         std::cerr << "ERROR: Cannot open All.csv" << std::endl;
@@ -467,6 +472,7 @@ auto loadMaliciousUrls(const int numPos=16273, const int numNeg=2709){
     // std::cout << "posIdx.size(): " << posIdx.size() << std::endl;
     // std::cout << "negIdx.size(): " << negIdx.size() << std::endl;
     // std::cout << "xData.size(): " << xData.size() << std::endl; 
+    maliciousUrlsFile.close();
 
     // Randomly select numPos examples
     std::random_device rd;

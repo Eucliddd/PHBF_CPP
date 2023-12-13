@@ -22,7 +22,13 @@ using namespace std::chrono;
 using return_type = std::invoke_result_t<decltype(loadEmber)>;
 using load_func = std::function<return_type()>;
 std::unordered_map<std::string,load_func> loaders;
-
+std::unordered_map<std::string, unsigned> dims = {
+    {"mnist",784},
+    {"malicious_urls",79},
+    {"higgs",28},
+    {"kitsune",116},
+    {"ember",2381}
+};
 
 void testRandom() {
     const auto size = 6400;
@@ -41,17 +47,18 @@ void testRandom() {
                   << std::endl;
 }
 
-void testDataset(const std::string& dataset, const std::string& filter, const unsigned sample_factor, const double bpr) {
+void testDataset(const std::string& dataset, const std::string& filter, const unsigned sample_factor, const double bpk) {
     
-    auto data{loaders[dataset]()};
-    unsigned dim = data->X_train.cols();
-    int hash_count = ceil((data->X_train.rows() * bpr * 8) / (DELTA + dim));
-    int total_size = hash_count * (DELTA + dim);
-    //int size = hash_count * DELTA;
-    double per = (double) total_size / (data->X_train.rows() * 8);
+    
     //int sample_factor = 100;
     //double bytes_per_element[] = {0.01,0.08,0.16,0.23,0.3,0.4,0.5,0.6};
     if(filter == "phbf"){
+        auto data{loaders[dataset]()};
+        unsigned dim = data->X_train.cols();
+        int hash_count = ceil((data->X_train.rows() * bpk * 8) / (DELTA + dim));
+        int total_size = hash_count * (DELTA + dim);
+        //int size = hash_count * DELTA;
+        double per = (double) total_size / (data->X_train.rows() * 8);
         std::string phbf_csv = "phbf_" + dataset + ".csv";
         if(!std::filesystem::exists(phbf_csv)){
             std::ofstream outFile(phbf_csv);
@@ -78,8 +85,12 @@ void testDataset(const std::string& dataset, const std::string& filter, const un
     else if (filter == "habf"){
         std::string habf_csv = "habf_" + dataset + ".csv";
         dataloader dl;
-        dl.load(data->X_train, data->X_test);
-        data = nullptr;
+        dl.load(dataset,false);
+        unsigned dim = dims[dataset];
+        int hash_count = ceil((dl.pos_keys_.size() * bpk * 8) / (DELTA + dim));
+        int total_size = hash_count * (DELTA + dim);
+        //int size = hash_count * DELTA;
+        double per = (double) total_size / (dl.pos_keys_.size() * 8);
         if(!std::filesystem::exists(habf_csv)){
             std::ofstream outFile(habf_csv);
             outFile << "byte_per_key,FPR,construction_time,query_time" << std::endl;

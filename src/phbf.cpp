@@ -232,7 +232,7 @@ auto PHBF::lookup(const Eigen::MatrixXd& X) const{
     //bool* results = new bool[X.rows()];
     auto results = std::unique_ptr<bool[]>(new bool[X.rows()]); 
     std::fill(results.get(), results.get() + X.rows(), true);
-    Eigen::MatrixXi&& hash_values = std::move(compute_hashes(X));
+    Eigen::MatrixXi&& hash_values = compute_hashes(X);
 
     // std::ofstream outFile("neg_hash_values.csv");
     // outFile << "neg_hash_values:" << std::endl;
