@@ -171,8 +171,8 @@ auto loadMnist(const std::vector<int>& posDigits, const int numPos=6000, const i
     }
 
     // MinMaxScale each feature
-    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
-    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
+    // _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    // _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     // Close files
     trainImagesFile.close();
@@ -258,8 +258,8 @@ auto loadKitsune(const std::string& attack="Mirai"){
     }
     
     // MinMaxScale each feature
-    _Result->X_train = std::move(SCALEDATA(_Result->X_train)); 
-    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
+    // _Result->X_train = std::move(SCALEDATA(_Result->X_train)); 
+    // _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     std::cout << "KITSUNE data loaded." << std::endl;
 
@@ -323,8 +323,8 @@ auto loadEmber(){
     yFile.close();
 
     // MinMaxScale each feature
-    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
-    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
+    // _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    // _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     std::cout << "EMBER data loaded." << std::endl;
 
@@ -405,8 +405,8 @@ auto loadHiggs(const int numPos=56540, const int numNeg=54323){
     }
 
     // MinMaxScale each feature
-    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
-    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
+    // _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    // _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     std::cout << "HIGGS data loaded." << std::endl;
 
@@ -489,8 +489,8 @@ auto loadMaliciousUrls(const int numPos=16273, const int numNeg=2709){
     }
 
     // MinMaxScale each feature
-    _Result->X_train = std::move(SCALEDATA(_Result->X_train));
-    _Result->X_test = std::move(SCALEDATA(_Result->X_test));
+    // _Result->X_train = std::move(SCALEDATA(_Result->X_train));
+    // _Result->X_test = std::move(SCALEDATA(_Result->X_test));
 
     // std::ofstream outFile("malicious_urls.csv");
     // outFile << "X_train:" << std::endl;

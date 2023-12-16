@@ -182,6 +182,9 @@ bool dataloader::loadMaliciousUrls(bool using_cost_, std::string epcho){
 
     std::cout << "Malicious URLs reading..."  << std::endl;
 
+    constexpr auto pos_num = 16273;
+    constexpr auto neg_num = 2709;
+
     const std::string maliciousUrlsPath = rootpath + "malicious_urls/All.csv";
     std::ifstream maliciousUrlsFile(maliciousUrlsPath);
     if (!maliciousUrlsFile.is_open()) {
@@ -190,6 +193,8 @@ bool dataloader::loadMaliciousUrls(bool using_cost_, std::string epcho){
     }
 
     std::string line;
+    std::vector<Slice> _poskeys;
+    std::vector<Slice> _negkeys;
     std::getline(maliciousUrlsFile, line); // skip the first line
     while (std::getline(maliciousUrlsFile, line)) {
         // if line contains NaN,nan,inf,-inf, skip it
@@ -199,17 +204,25 @@ bool dataloader::loadMaliciousUrls(bool using_cost_, std::string epcho){
         }
         std::string tag = line.substr(line.find_last_of(',') + 1);
         if (tag == "benign") {
-            Slice * key = new Slice();    
-            key->str = line.substr(0, line.find_last_of(','));
-            pos_keys_.push_back(key);
+            _negkeys.push_back(Slice{line.substr(0, line.find_last_of(',')), 1});
         } else {
-            Slice * key = new Slice();    
-            key->str = line.substr(0, line.find_last_of(','));
-            key->cost = using_cost_ ? 1 : 1;
-            neg_keys_.push_back(key);
-        }
+            _poskeys.push_back(Slice{line.substr(0, line.find_last_of(',')), 1});
+        } 
     }
     maliciousUrlsFile.close();
+
+    // shuffle
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(_poskeys.begin(), _poskeys.end(), g);
+    std::shuffle(_negkeys.begin(), _negkeys.end(), g);
+
+    for (int i = 0; i < pos_num; i++) {
+        pos_keys_.push_back(new Slice(std::move(_poskeys[i])));
+    }
+    for (int i = 0; i < neg_num; i++) {
+        neg_keys_.push_back(new Slice(std::move(_negkeys[i])));
+    }
 
     std::cout << "Malicious URLs data loaded." << std::endl;
     return true;
