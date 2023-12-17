@@ -12,7 +12,7 @@
 #include "key.h"
 #include "../util/hashutil.h"
 
-#define HASH_NUM 3
+#define HASH_NUM 5
 #define ALLOCATION_RATIO 4 // Allocation ratio between the size of bloom and hashexpressor
 #define HASHEXPRESSOR_ENTRY_HASH xxhash64// entry_hash_ of hashexpressor
 
@@ -97,6 +97,8 @@ class HABFilter{
         void AddAndOptimize(const std::vector<Slice *> &pos_keys_, const std::vector<Slice *> &neg_keys_);
         bool Contain(Slice &key);
         long double compute_fpr(const std::vector<Slice *> &neg_keys_);
+        uint32_t getModelSize(){return hash_expressor_.getSize();};
+        uint32_t getArraySize(){return bloom_.getSize();};
 
     private:
         void Optimize(Tuple_V * V_, std::vector<std::vector<HABFilterKey *>> &T_, std::vector<HABFilterKey *> &CQ_);

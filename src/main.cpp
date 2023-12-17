@@ -19,6 +19,7 @@
 
 using namespace std::chrono;
 
+
 using return_type = std::invoke_result_t<decltype(loadEmber)>;
 using load_func = std::function<return_type()>;
 std::unordered_map<std::string,load_func> loaders;
@@ -30,22 +31,22 @@ std::unordered_map<std::string, unsigned> dims = {
     {"ember",2381}
 };
 
-void testRandom() {
-    const auto size = 6400;
-    int hash_count = size / DELTA;
-    int dim = 100;
-    int sample_factor = 100;
-    double per = (double) size / (1000 * 8);
-    auto phbf = std::make_unique<PHBF>(hash_count, dim, sample_factor, "gaussian");
-    Eigen::MatrixXd X = Eigen::MatrixXd::Random(1000, dim);
-    Eigen::MatrixXd Y = Eigen::MatrixXd::Random(1000, dim);
-    phbf->initialize(X, Y);
-    phbf->bulk_add(X);
-    std::cout << "FPR: " << phbf->compute_fpr(Y) 
-                  << " ,byte per key: " << per 
-                  << " ,hash functions: " << hash_count 
-                  << std::endl;
-}
+// void testRandom() {
+//     const auto size = 6400;
+//     int hash_count = size / DELTA;
+//     int dim = 100;
+//     int sample_factor = 100;
+//     double per = (double) size / (1000 * 8);
+//     auto phbf = std::make_unique<PHBF>(bpk, n, dim, sample_factor, "gaussian");
+//     Eigen::MatrixXd X = Eigen::MatrixXd::Random(1000, dim);
+//     Eigen::MatrixXd Y = Eigen::MatrixXd::Random(1000, dim);
+//     phbf->initialize(X, Y);
+//     phbf->bulk_add(X);
+//     std::cout << "FPR: " << phbf->compute_fpr(Y) 
+//                   << " ,byte per key: " << per 
+//                   << " ,hash functions: " << hash_count 
+//                   << std::endl;
+// }
 
 void testDataset(const std::string& dataset, const std::string& filter, const unsigned sample_factor, const double bpk) {
     
@@ -54,19 +55,22 @@ void testDataset(const std::string& dataset, const std::string& filter, const un
     //double bytes_per_element[] = {0.01,0.08,0.16,0.23,0.3,0.4,0.5,0.6};
     if(filter == "phbf"){
         auto data{loaders[dataset]()};
-        unsigned dim = data->X_train.cols();
-        int hash_count = ceil((data->X_train.rows() * bpk * 8) / (DELTA + dim));
-        int total_size = hash_count * (DELTA + dim);
+        const unsigned dim = data->X_train.cols();
+        //int hash_count = ceil((data->X_train.rows() * bpk * 8) / (DELTA + dim));
+        //int total_size = hash_count * (DELTA + dim);
         //int size = hash_count * DELTA;
-        double per = (double) total_size / (data->X_train.rows() * 8);
-        std::string phbf_csv = "phbf_" + dataset + ".csv";
+        const uint64_t n = data->X_train.rows();
+        const size_t len = ceil((bpk * 8 * n ) / HASH_COUNT);
+        assert(len > dim * sizeof(double) * 8);
+        const double per = (len * HASH_COUNT) / (n * 8.0);
+        const std::string phbf_csv = "phbf_" + dataset + ".csv";
         if(!std::filesystem::exists(phbf_csv)){
             std::ofstream outFile(phbf_csv);
-            outFile << "byte_per_key,FPR,construction_time,query_time" << std::endl;
+            outFile << "byte_per_key,FPR,construction_time,query_time,model_size,array_size" << std::endl;
             outFile.close();
         }
         std::ofstream outFile(phbf_csv, std::ios_base::app);
-        auto phbf = std::make_unique<PHBF>(hash_count, dim, sample_factor, "gaussian");
+        auto phbf = std::make_unique<PHBF>(bpk, n, dim, sample_factor, "gaussian");
 
         // auto t1 = steady_clock::now();
         // phbf->initialize(data->X_train, data->X_test);
@@ -75,9 +79,15 @@ void testDataset(const std::string& dataset, const std::string& filter, const un
         // auto construction_time = duration_cast<milliseconds>(t2 - t1).count();
         auto [_, construction_time] = TIME(&PHBF::initandadd, phbf.get(), data->X_train, data->X_test);
 
+        std::cout << "PHBF size: " << phbf->model_size() << " + " 
+                                   << phbf->array_size() << " = " 
+                                   << phbf->array_size() + phbf->model_size() 
+                                   << "Bytes" << std::endl; 
+
         auto [fpr, query_time] = TIME(&PHBF::compute_fpr, phbf.get(), data->X_test);
 
-        outFile << per << "," << fpr.value() << "," << construction_time << "," << query_time << std::endl;
+        outFile << per << "," << fpr.value() << "," << construction_time << "," << query_time << "," 
+                << phbf->model_size() << "," << phbf->array_size() << std::endl;
         phbf = nullptr;
         data = nullptr;
         outFile.close();
@@ -87,24 +97,31 @@ void testDataset(const std::string& dataset, const std::string& filter, const un
         dataloader dl;
         dl.load(dataset,false);
         unsigned dim = dims[dataset];
-        int hash_count = ceil((dl.pos_keys_.size() * bpk * 8) / (DELTA + dim));
-        int total_size = hash_count * (DELTA + dim);
+        //int hash_count = ceil((dl.pos_keys_.size() * bpk * 8) / (DELTA + dim));
+        //int total_size = hash_count * (DELTA + dim);
         //int size = hash_count * DELTA;
-        double per = (double) total_size / (dl.pos_keys_.size() * 8);
+        const uint64_t n = dl.pos_keys_.size();
+        double per = (ceil((bpk * 8 * n ) / HASH_COUNT) * HASH_COUNT) / (n * 8);
+        //double per = (double) total_size / (dl.pos_keys_.size() * 8);
         if(!std::filesystem::exists(habf_csv)){
             std::ofstream outFile(habf_csv);
-            outFile << "byte_per_key,FPR,construction_time,query_time" << std::endl;
+            outFile << "byte_per_key,FPR,construction_time,query_time,model_size,array_size" << std::endl;
             outFile.close();
         }
         std::ofstream outFile(habf_csv, std::ios_base::app);
         habf::HABFilter habf(per*8, dl.pos_keys_.size());
 
-
         auto [_, construction_time] = TIME(&habf::HABFilter::AddAndOptimize, &habf, dl.pos_keys_,dl.neg_keys_);
+
+        std::cout << "HABF size: " << habf.getModelSize() / 8 << " + " 
+                                   << habf.getArraySize() / 8<< " = " 
+                                   << habf.getArraySize() / 8 + habf.getModelSize() / 8 
+                                   << "Bytes" << std::endl;
 
         auto [fpr, query_time] = TIME(&habf::HABFilter::compute_fpr, &habf, dl.neg_keys_);
 
-        outFile << per << "," << fpr.value() << "," << construction_time << "," << query_time << std::endl;
+        outFile << per << "," << fpr.value() << "," << construction_time << "," << query_time << "," 
+                << habf.getModelSize() / 8 << "," << habf.getArraySize() / 8 << std::endl;
         outFile.close();
     }
     else{

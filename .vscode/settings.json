@@ -83,7 +83,8 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "valarray": "cpp",
-        "codecvt": "cpp"
+        "codecvt": "cpp",
+        "geometry": "cpp"
     },
     "cmake.sourceDirectory": "/home/syx/phbf_test"
 }

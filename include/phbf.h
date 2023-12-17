@@ -5,14 +5,16 @@
 #include <Eigen/Dense>
 #include "dynamic_bitset.hpp"
 #include <bitset>
+#include <stdint.h>
 
 #define TEST_SCALER 0
 
 const int DELTA = 256;
+const int HASH_COUNT = 5;
 
 class PHBF {
 public:
-    PHBF(const int hash_count, const int dim, const int sample_factor = 100, const std::string& method = "gaussian") noexcept;
+    PHBF(const double bpk, const uint64_t n, const int dim, const int sample_factor = 100, const std::string& method = "gaussian") noexcept;
 
     void initialize(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) noexcept;
     void bulk_add(const Eigen::MatrixXd& X) noexcept;
@@ -29,12 +31,12 @@ public:
     }
 
     private:
-        int hash_count;
-        //int delta;
-        std::vector<std::bitset<DELTA>> bit_array; // specify the number of bits in the bitset
+        //int hash_count;
+        uint64_t delta;
+        std::array<sul::dynamic_bitset<>,HASH_COUNT> bit_array; // specify the number of bits in the bitset
         std::string method;
         int sample_factor;
-        int dim;
+        unsigned int dim;
         //size_t size;
         Eigen::MatrixXd vectors;
 

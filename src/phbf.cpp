@@ -16,13 +16,14 @@
 
 #define OPTIMISTIC 1
 
-PHBF::PHBF(const int hash_count, const int dim, const int sample_factor, const std::string& method) noexcept
-    : hash_count(hash_count), method(method), sample_factor(sample_factor), dim(dim){
-    bit_array.resize(hash_count);
-    for (int i = 0; i < hash_count; ++i) {
-        bit_array[i].reset();
+PHBF::PHBF(const double bpk, const uint64_t n, const int dim, const int sample_factor, const std::string& method) noexcept
+    : method(method), sample_factor(sample_factor), dim(dim), delta(ceil((bpk * n * 8) / HASH_COUNT) - dim * sizeof(double) * 8){
+    for (auto& e : bit_array) {
+        e.resize(delta);
+        e.reset();
     }
-    std::cout << "PHBF Size:" << hash_count * (DELTA + dim) / (double)(8*1024*1024) << std::endl;
+    std::cout << "PHBF Size:" << HASH_COUNT * (delta + dim) / (double)(8*1024*1024) << std::endl;
+    std::cout << "delta: " << delta << std::endl;
 }
 // select best "hash_count" vectors from "sample_size*hash_count" vectors
 /*
@@ -34,7 +35,7 @@ PHBF::PHBF(const int hash_count, const int dim, const int sample_factor, const s
     * 6. select the best "hash_count" vectors
 */
 Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y) const noexcept{
-    int sample_size = hash_count * sample_factor;
+    int sample_size = HASH_COUNT * sample_factor;
     Eigen::MatrixXd candidates(sample_size, dim);
 
     // Generate random vectors
@@ -72,11 +73,11 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
 
  
     Eigen::MatrixXi&& pos_hash_values = (SCALEDATA(static_cast<Eigen::MatrixXd>(X * candidates.transpose()))
-                                        .array().abs() * (DELTA))
+                                        .array().abs() * (delta))
                                         .array().cast<int>();
     //std::cout << "pos hash values computed." << std::endl;
     Eigen::MatrixXi&& neg_hash_values = (SCALEDATA(static_cast<Eigen::MatrixXd>(Y * candidates.transpose()))
-                                        .array().abs() * (DELTA))
+                                        .array().abs() * (delta))
                                         .array().cast<int>();
     //std::cout << "neg hash values computed." << std::endl;
     
@@ -130,8 +131,8 @@ Eigen::MatrixXd PHBF::_select_vectors(const Eigen::MatrixXd& X, const Eigen::Mat
               [&overlaps](int i, int j) { return overlaps[i] < overlaps[j]; });
 
     // Select the best hash functions
-    Eigen::MatrixXd best_hashes(hash_count, dim);
-    for (int i = 0; i < hash_count; ++i) {
+    Eigen::MatrixXd best_hashes(HASH_COUNT, dim);
+    for (int i = 0; i < HASH_COUNT; ++i) {
         best_hashes.row(i) = candidates.row(best_hashes_idx[i]);
     }
 
@@ -189,7 +190,7 @@ inline Eigen::MatrixXi PHBF::compute_hashes(const Eigen::MatrixXd& X) const noex
     return static_cast<Eigen::MatrixXi>(
         (SCALEDATA(X * vectors)
         .array()
-        .abs() * (DELTA))
+        .abs() * (delta))
         .cast<int>()
         );
 #endif
@@ -215,7 +216,7 @@ void PHBF::bulk_add(const Eigen::MatrixXd& X) noexcept{
 
     for (int i = 0; i < indexes.cols(); ++i) {
         for (int j = 0; j < indexes.rows(); ++j) {
-            int hash_value = indexes(j, i);
+            int hash_value = indexes(j, i) % delta;
             bit_array[i].set(hash_value);
         }
     }
@@ -246,7 +247,7 @@ auto PHBF::lookup(const Eigen::MatrixXd& X) const{
 
     for (int i = 0; i < hash_values.rows(); ++i) {
         for (int j = 0; j < hash_values.cols(); ++j) {
-            int hash_value = hash_values(i, j);
+            int hash_value = hash_values(i, j) % delta;
             if (!bit_array[j][hash_value]) {
                 results[i] = false;
                 break;
